@@ -182,4 +182,3 @@ If you still want to use dlib:
 ## License
 
 This project is for educational purposes.
-
