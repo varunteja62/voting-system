@@ -61,6 +61,23 @@ def init_database():
                 ('Koushik Guptha', 'Congress')
             """)
         
+        # Create session tables
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS admin_sessions (
+                token VARCHAR(255) PRIMARY KEY,
+                username VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS vote_tokens (
+                token VARCHAR(255) PRIMARY KEY,
+                voter_id VARCHAR(50) NOT NULL,
+                expires_at FLOAT NOT NULL
+            )
+        """)
+        
         
         conn.commit()
         cur.close()
