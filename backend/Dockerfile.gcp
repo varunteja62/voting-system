@@ -1,0 +1,29 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install system dependencies for OpenCV and MediaPipe
+# Using --no-install-recommends to save disk space
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements-gcp.txt .
+
+# Install dependencies with explicit CPU-only PyTorch index to save gigabytes of RAM
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir -r requirements-gcp.txt
+
+COPY . .
+
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=production
+# Force PyTorch/ONNX to single thread to prevent CPU spike freezing the micro instance
+ENV OMP_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
+
+EXPOSE 5000
+
+# Use Gunicorn for better resource masking, falling back to python if missing
+CMD ["python", "app.py"]
