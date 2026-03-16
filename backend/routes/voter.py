@@ -231,6 +231,8 @@ def check_liveness():
             threshold=current_app.config['FACE_MATCH_THRESHOLD']
         )
         
+        print(f"DEBUG: Liveness identity check - Distance: {distance:.4f} (Threshold: {current_app.config['FACE_MATCH_THRESHOLD']}), Result: {'MATCH' if face_match else 'MISMATCH'}")
+        
         if not face_match:
             return jsonify({
                 'error': 'Security Alert: Identity mismatch during liveness check. Please ensure the same person is in frame.',

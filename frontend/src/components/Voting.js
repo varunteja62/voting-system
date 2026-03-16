@@ -111,6 +111,19 @@ function Voting() {
           }
         } catch (error) {
           console.error('Liveness check error:', error);
+          if (error.response?.status === 403) {
+            // Security breach: Identity mismatch
+            if (blinkCheckInterval.current) {
+              clearInterval(blinkCheckInterval.current);
+            }
+            setStatus({ 
+              type: 'error', 
+              message: 'SECURITY ALERT: Identity mismatch detected. Process terminated.' 
+            });
+            setTimeout(() => {
+              reset();
+            }, 3000);
+          }
         }
       }
     }, 2000);
