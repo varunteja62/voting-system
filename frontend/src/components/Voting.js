@@ -14,6 +14,7 @@ function Voting() {
   const [candidates, setCandidates] = useState([]);
   const [blinkCount, setBlinkCount] = useState(0);
   const [blinkDetected, setBlinkDetected] = useState(false);
+  const [voteToken, setVoteToken] = useState(null);
 
   const webcamRef = useRef(null);
   const [facingMode, setFacingMode] = useState('user');
@@ -98,7 +99,8 @@ function Voting() {
           if (response.data.liveness_detected) {
             setBlinkCount(prev => prev + 1);
             setBlinkDetected(true);
-            setStatus({ type: 'success', message: `Blink detected! (${blinkCount + 1})` });
+            setVoteToken(response.data.vote_token);
+            setStatus({ type: 'success', message: `Blink detected! Identity confirmed.` });
 
             // After detecting a blink, wait a moment then allow voting
             setTimeout(() => {
@@ -142,7 +144,7 @@ function Voting() {
 
     try {
       const response = await axios.post(`${API_BASE_URL}/vote`, {
-        voter_id: voterId,
+        vote_token: voteToken,
         candidate: candidate,
         vote_data: {}
       });
@@ -154,6 +156,7 @@ function Voting() {
       setCapturedImage(null);
       setBlinkCount(0);
       setBlinkDetected(false);
+      setVoteToken(null);
     } catch (error) {
       setStatus({
         type: 'error',
