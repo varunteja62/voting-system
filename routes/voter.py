@@ -242,10 +242,19 @@ def check_liveness():
         # 2. Liveness Check (Eye Blink)
         blink_detected = detect_eye_blink(face_image)
         
+        vote_token = None
+        if blink_detected:
+            # IDENTITY + BLINK MATCHED on same frame. Issue License to Vote.
+            vote_token = str(uuid.uuid4())
+            # Token expires in 5 minutes (300 seconds)
+            create_vote_session(vote_token, voter_id, time.time() + 300)
+            print(f"DEBUG: Security Chain Secured. Issued vote_token for {voter_id}")
+        
         return jsonify({
             'liveness_detected': blink_detected,
             'identity_verified': True,
-            'message': 'Liveness and Identity verification completed'
+            'vote_token': vote_token,
+            'message': 'Liveness and Identity verification completed' if blink_detected else 'Identity verified, waiting for blink...'
         }), 200
         
     except Exception as e:
@@ -258,13 +267,24 @@ def cast_vote():
     """Cast a vote after verification"""
     try:
         data = request.json
-        voter_id = data.get('voter_id')
+        vote_token = data.get('vote_token')
         candidate = data.get('candidate')
         vote_data = data.get('vote_data', {})
         
-        if not all([voter_id, candidate]):
-            return jsonify({'error': 'Missing required fields: voter_id, candidate'}), 400
+        if not all([vote_token, candidate]):
+            return jsonify({'error': 'Missing required fields: vote_token, candidate'}), 400
             
+        # 1. Validate the digital 'License to Vote' (The Token)
+        session = get_vote_session(vote_token)
+        if not session:
+            return jsonify({'error': 'Invalid or expired vote token. Please perform liveness check again.'}), 401
+            
+        if time.time() > session['expires_at']:
+            delete_vote_session(vote_token)
+            return jsonify({'error': 'Vote token expired. Please perform liveness check again.'}), 401
+            
+        voter_id = session['voter_id']
+        
         # Check if voter has already voted
         conn = get_db_connection()
         if not conn:
@@ -285,6 +305,9 @@ def cast_vote():
         conn.commit()
         cur.close()
         conn.close()
+        
+        # 2. Burn the token so it can't be used again
+        delete_vote_session(vote_token)
         
         return jsonify({'message': 'Vote cast successfully'}), 201
         
