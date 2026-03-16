@@ -37,7 +37,7 @@ class Config:
     RATE_LIMIT_PER_MINUTE = 60
     
     # Face Recognition Settings
-    FACE_MATCH_THRESHOLD = 0.6
+    FACE_MATCH_THRESHOLD = 0.4
     
     # Logging
     LOG_FILE = 'voting_system.log'
