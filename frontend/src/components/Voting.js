@@ -91,6 +91,7 @@ function Voting() {
       if (imageSrc) {
         try {
           const response = await axios.post(`${API_BASE_URL}/liveness`, {
+            voter_id: voterId,
             face_image: imageSrc
           });
 
