@@ -4,17 +4,18 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
+// Add CSRF header for all axios requests
+axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+
 function Voting() {
   const [voterId, setVoterId] = useState('');
   const [step, setStep] = useState(1); // 1: ID input, 2: Face verify, 3: Liveness, 4: Vote
-  const [capturedImage, setCapturedImage] = useState(null);
   const [status, setStatus] = useState({ type: '', message: '' });
   const [isProcessing, setIsProcessing] = useState(false);
   const [candidate, setCandidate] = useState('');
   const [candidates, setCandidates] = useState([]);
-  const [blinkCount, setBlinkCount] = useState(0);
-  const [blinkDetected, setBlinkDetected] = useState(false);
-  const [voteToken, setVoteToken] = useState(null);
+  const [voteToken, setVoteToken] = useState('');
+  const [openEyeImage, setOpenEyeImage] = useState(null);
 
   const webcamRef = useRef(null);
   const [facingMode, setFacingMode] = useState('user');
@@ -44,7 +45,6 @@ function Voting() {
   const capture = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
     if (imageSrc) {
-      setCapturedImage(imageSrc);
       return imageSrc;
     }
     return null;
@@ -67,68 +67,91 @@ function Voting() {
       });
 
       if (response.data.verified) {
-        setStatus({ type: 'success', message: 'Face verified successfully!' });
+        setStatus({
+          type: 'success',
+          message: `Face verified successfully! (Confidence: ${response.data.confidence}%)`
+        });
+        setOpenEyeImage(imageSrc); // Store the verified face (Open Eyes)
         setStep(3); // Move to liveness detection
-        startBlinkDetection();
+        startBlinkDetection(imageSrc);
       }
     } catch (error) {
+      const errorData = error.response?.data;
+      let msg = errorData?.error || 'Verification failed. Please try again.';
+
+      if (errorData?.confidence !== undefined) {
+        msg += ` (Confidence: ${errorData.confidence}%)`;
+      }
+
       setStatus({
         type: 'error',
-        message: error.response?.data?.error || 'Verification failed. Please try again.'
+        message: msg
       });
-      setCapturedImage(null);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const startBlinkDetection = () => {
-    setBlinkCount(0);
-    setBlinkDetected(false);
+  const startBlinkDetection = (initialOpenImage) => {
+    setStatus({ type: 'info', message: 'Please blink your eyes naturally...' });
 
-    // Check for blinks every 2 seconds
+    let checkCount = 0;
+    // Check for blinks every 1 second
     blinkCheckInterval.current = setInterval(async () => {
+      checkCount++;
+      if (checkCount % 3 === 0) {
+        setStatus({ type: 'info', message: 'Analyzing face... Please blink naturally.' });
+      } else if (checkCount % 3 === 1) {
+        setStatus({ type: 'info', message: 'Keep your eyes visible to the camera...' });
+      }
+
       const imageSrc = capture();
       if (imageSrc) {
         try {
+          // First check for simple blink/liveness
           const response = await axios.post(`${API_BASE_URL}/liveness`, {
-            voter_id: voterId,
             face_image: imageSrc
           });
 
           if (response.data.liveness_detected) {
-            setBlinkCount(prev => prev + 1);
-            setBlinkDetected(true);
-            setVoteToken(response.data.vote_token);
-            setStatus({ type: 'success', message: `Blink detected! Identity confirmed.` });
-
-            // After detecting a blink, wait a moment then allow voting
-            setTimeout(() => {
-              if (blinkCheckInterval.current) {
-                clearInterval(blinkCheckInterval.current);
-              }
-              setStep(4); // Move to voting step
-              setStatus({ type: 'success', message: 'Liveness verified! You can now cast your vote.' });
-            }, 1000);
-          }
-        } catch (error) {
-          console.error('Liveness check error:', error);
-          if (error.response?.status === 403) {
-            // Security breach: Identity mismatch
+            // Blink detected! Now perform Secure Verification
             if (blinkCheckInterval.current) {
               clearInterval(blinkCheckInterval.current);
             }
-            setStatus({ 
-              type: 'error', 
-              message: 'SECURITY ALERT: Identity mismatch detected. Process terminated.' 
-            });
-            setTimeout(() => {
-              reset();
-            }, 3000);
+
+            setStatus({ type: 'info', message: 'Blink detected! Verifying security...' });
+
+            performSecureVerify(initialOpenImage || openEyeImage, imageSrc);
           }
+        } catch (error) {
+          console.error('Liveness check error:', error);
         }
       }
-    }, 2000);
+    }, 1000);
+  };
+
+  const performSecureVerify = async (imgOpen, imgClosed) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/secure_verify`, {
+        voter_id: voterId,
+        image_open: imgOpen,
+        image_closed: imgClosed
+      });
+
+      if (response.data.verified) {
+        setVoteToken(response.data.vote_token);
+        setStatus({
+          type: 'success',
+          message: 'Security verification passed! You may now vote.'
+        });
+        setStep(4);
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Secure verification failed.';
+      setStatus({ type: 'error', message: errorMsg });
+      // Optional: restart blink detection or force reset
+      setTimeout(reset, 3000);
+    }
   };
 
   const handleVote = async (e) => {
@@ -136,6 +159,11 @@ function Voting() {
 
     if (!candidate) {
       setStatus({ type: 'error', message: 'Please select a candidate' });
+      return;
+    }
+
+    if (!voteToken) {
+      setStatus({ type: 'error', message: 'Security token missing. Please restart verification.' });
       return;
     }
 
@@ -152,11 +180,9 @@ function Voting() {
       setStatus({ type: 'success', message: response.data.message || 'Vote cast successfully!' });
       setVoterId('');
       setCandidate('');
+      setVoteToken('');
+      setOpenEyeImage(null);
       setStep(1);
-      setCapturedImage(null);
-      setBlinkCount(0);
-      setBlinkDetected(false);
-      setVoteToken(null);
     } catch (error) {
       setStatus({
         type: 'error',
@@ -169,10 +195,9 @@ function Voting() {
 
   const reset = () => {
     setStep(1);
-    setCapturedImage(null);
     setStatus({ type: '', message: '' });
-    setBlinkCount(0);
-    setBlinkDetected(false);
+    setVoteToken('');
+    setOpenEyeImage(null);
     if (blinkCheckInterval.current) {
       clearInterval(blinkCheckInterval.current);
     }
@@ -257,11 +282,6 @@ function Voting() {
               }}
             />
           </div>
-          {blinkDetected && (
-            <div className="status-message status-success">
-              Blink detected! Verifying liveness...
-            </div>
-          )}
           <div style={{ textAlign: 'center', marginTop: '10px' }}>
             <button onClick={reset}>Reset</button>
           </div>

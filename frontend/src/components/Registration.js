@@ -8,8 +8,7 @@ const API_BASE_URL = 'http://localhost:5000/api';
 function Registration() {
   const [voterId, setVoterId] = useState('');
   const [name, setName] = useState('');
-  // const [fingerprint, setFingerprint] = useState('');
-  const [capturedImage, setCapturedImage] = useState(null);
+  const [capturedImages, setCapturedImages] = useState({ left: null, right: null, center: null });
   const [status, setStatus] = useState({ type: '', message: '' });
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -32,7 +31,8 @@ function Registration() {
     if (checkInterval.current) clearInterval(checkInterval.current);
 
     checkInterval.current = setInterval(async () => {
-      if (capturedImage) return; // Stop checking if image is captured
+      // Don't check if all images are captured
+      if (capturedImages.left && capturedImages.right && capturedImages.center) return;
 
       const imageSrc = webcamRef.current?.getScreenshot();
       if (!imageSrc) return;
@@ -43,17 +43,19 @@ function Registration() {
         });
 
         const pose = response.data.pose;
-        console.log("Current Pose:", pose, "Step:", livenessStep);
         setCurrentPose(pose);
 
         if (livenessStep === 0 && pose === 'Left') {
-          setStatus({ type: 'success', message: 'Left Turn Verified!' });
+          setCapturedImages(prev => ({ ...prev, left: imageSrc }));
+          setStatus({ type: 'success', message: 'Left Turn Captured! Now turn Right.' });
           setLivenessStep(1);
         } else if (livenessStep === 1 && pose === 'Right') {
-          setStatus({ type: 'success', message: 'Right Turn Verified!' });
+          setCapturedImages(prev => ({ ...prev, right: imageSrc }));
+          setStatus({ type: 'success', message: 'Right Turn Captured! Now look Center & click Capture.' });
           setLivenessStep(2);
         } else if (livenessStep === 2 && pose === 'Center') {
-          setStatus({ type: 'success', message: 'Liveness Verified! You can now capture.' });
+          // Just update status, wait for user to click capture
+          setStatus({ type: 'success', message: 'Face Center! You can now click Capture.' });
         }
 
       } catch (error) {
@@ -70,13 +72,13 @@ function Registration() {
   const capture = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
     if (imageSrc) {
-      setCapturedImage(imageSrc);
-      setStatus({ type: 'info', message: 'Image captured. Please verify and submit.' });
+      setCapturedImages(prev => ({ ...prev, center: imageSrc }));
+      setStatus({ type: 'info', message: 'All angles captured. Please verify and submit.' });
     }
   }, [webcamRef]);
 
   const retake = () => {
-    setCapturedImage(null);
+    setCapturedImages({ left: null, right: null, center: null });
     setStatus({ type: '', message: '' });
     setLivenessStep(0);
   };
@@ -84,8 +86,8 @@ function Registration() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!capturedImage) {
-      setStatus({ type: 'error', message: 'Please capture your face image first' });
+    if (!capturedImages.left || !capturedImages.right || !capturedImages.center) {
+      setStatus({ type: 'error', message: 'Please complete all pose captures first' });
       return;
     }
 
@@ -95,19 +97,19 @@ function Registration() {
     }
 
     setIsProcessing(true);
-    setStatus({ type: 'info', message: 'Registering voter...' });
+    setStatus({ type: 'info', message: 'Registering voter and processing multi-angle biometrics...' });
 
     try {
       const response = await axios.post(`${API_BASE_URL}/register`, {
         voter_id: voterId,
         name: name,
-        face_image: capturedImage,
+        face_images: [capturedImages.left, capturedImages.right, capturedImages.center],
       });
 
       setStatus({ type: 'success', message: response.data.message || 'Registration successful!' });
       setVoterId('');
       setName('');
-      setCapturedImage(null);
+      setCapturedImages({ left: null, right: null, center: null });
     } catch (error) {
       setStatus({
         type: 'error',
@@ -156,7 +158,7 @@ function Registration() {
         <div className="form-group">
           <label>Face Capture *</label>
           <div className="video-container">
-            {!capturedImage ? (
+            {!capturedImages.center ? (
               <>
                 <Webcam
                   audio={false}
@@ -181,9 +183,9 @@ function Registration() {
                   borderRadius: '5px',
                   zIndex: 10
                 }}>
-                  {livenessStep === 0 && "Step 1: Turn Head LEFT"}
-                  {livenessStep === 1 && "Step 2: Turn Head RIGHT"}
-                  {livenessStep === 2 && "Step 3: Look Center & Capture"}
+                  {livenessStep === 0 && "Step 1: Turn Head LEFT for side profile"}
+                  {livenessStep === 1 && "Step 2: Turn Head RIGHT for side profile"}
+                  {livenessStep === 2 && "Step 3: Look CENTER & Capture"}
                   <div style={{ fontSize: '0.8em', marginTop: '5px', color: '#aaa' }}>
                     (Detected: {currentPose || "Waiting..."})
                   </div>
@@ -192,11 +194,11 @@ function Registration() {
                 <div style={{ textAlign: 'center', marginTop: '10px' }}>
                   {livenessStep === 2 ? (
                     <button type="button" onClick={capture}>
-                      Capture & Finish
+                      Capture Center & Finish
                     </button>
                   ) : (
-                    <div style={{ color: 'orange' }}>
-                      Please follow instructions to verify liveness
+                    <div style={{ color: 'orange', padding: '10px' }}>
+                      Please follow on-screen instructions to verify liveness
                     </div>
                   )}
 
@@ -211,10 +213,10 @@ function Registration() {
               </>
             ) : (
               <>
-                <img src={capturedImage} alt="Captured" style={{ width: '100%' }} />
+                <img src={capturedImages.center} alt="Captured" style={{ width: '100%' }} />
                 <div style={{ textAlign: 'center', marginTop: '10px' }}>
                   <button type="button" onClick={retake}>
-                    Retake
+                    Retake All Angles
                   </button>
                 </div>
               </>

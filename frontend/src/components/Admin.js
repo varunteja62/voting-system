@@ -9,41 +9,141 @@ function Admin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Auth state
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('adminToken'));
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+
   const fetchVotes = async () => {
+    const token = localStorage.getItem('adminToken');
+    if (!token) return;
+
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/votes`);
+      const response = await axios.get(`${API_BASE_URL}/admin/votes`, {
+        headers: { 'Authorization': token }
+      });
       setVotes(response.data.votes || []);
       setError('');
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to fetch votes');
+      if (err.response?.status === 401) {
+        handleLogout();
+      } else {
+        setError(err.response?.data?.error || 'Failed to fetch votes');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const fetchStats = async () => {
+    const token = localStorage.getItem('adminToken');
+    if (!token) return;
+
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/stats`);
+      const response = await axios.get(`${API_BASE_URL}/admin/stats`, {
+        headers: { 'Authorization': token }
+      });
       setStats(response.data);
     } catch (err) {
       console.error('Failed to fetch stats:', err);
     }
   };
 
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setAuthError('');
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/admin/login`, {
+        username,
+        password
+      });
+
+      if (response.data.authenticated) {
+        localStorage.setItem('adminToken', response.data.token);
+        setIsAuthenticated(true);
+        setError('');
+      }
+    } catch (err) {
+      setAuthError(err.response?.data?.error || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    setIsAuthenticated(false);
+    setVotes([]);
+    setStats(null);
+  };
+
   useEffect(() => {
-    fetchVotes();
-    fetchStats();
-    
-    // Refresh votes every 5 seconds for real-time updates
-    const interval = setInterval(() => {
+    if (isAuthenticated) {
       fetchVotes();
       fetchStats();
-    }, 5000);
 
-    return () => clearInterval(interval);
-  }, []);
+      const interval = setInterval(() => {
+        fetchVotes();
+        fetchStats();
+      }, 5000);
 
-  if (loading) {
+      return () => clearInterval(interval);
+    } else {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="card">
+        <h1>Admin Login</h1>
+        <p style={{ textAlign: 'center', color: '#666', marginBottom: '20px' }}>
+          Please enter admin credentials to view voting results.
+        </p>
+        <form onSubmit={handleLogin}>
+          <div className="form-group">
+            <label htmlFor="username">Admin Username</label>
+            <input
+              type="text"
+              id="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Username"
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              required
+            />
+          </div>
+
+          {authError && (
+            <div className="status-message status-error">
+              {authError}
+            </div>
+          )}
+
+          <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <button type="submit" disabled={loading}>
+              {loading ? 'Logging in...' : 'Login'}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  if (loading && votes.length === 0) {
     return (
       <div className="card">
         <h1>Admin Dashboard</h1>
@@ -55,8 +155,13 @@ function Admin() {
   return (
     <div>
       <div className="card">
-        <h1>Admin Dashboard</h1>
-        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h1>Admin Dashboard</h1>
+          <button onClick={handleLogout} className="secondary" style={{ height: 'fit-content' }}>
+            Logout
+          </button>
+        </div>
+
         {stats && (
           <div className="stats-container">
             <div className="stat-card">

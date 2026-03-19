@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import Registration from './components/Registration';
 import Voting from './components/Voting';
@@ -6,9 +6,19 @@ import Admin from './components/Admin';
 import './App.css';
 
 function App() {
+  const [theme, setTheme] = useState('dark');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+
   return (
     <Router>
-      <div className="App">
+      <div className={`App theme-${theme}`}>
         <nav className="nav">
           <ul className="nav-links">
             <li>
@@ -27,8 +37,11 @@ function App() {
               </NavLink>
             </li>
           </ul>
+          <button className="theme-toggle" onClick={toggleTheme} title="Toggle Dark/Light Mode">
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
         </nav>
-        
+
         <div className="container">
           <Routes>
             <Route path="/register" element={<Registration />} />
