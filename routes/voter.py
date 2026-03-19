@@ -193,19 +193,45 @@ def get_candidates():
 
 @voter_bp.route('/liveness', methods=['POST'])
 def check_liveness():
+    """Perform liveness detection using eye blink"""
+    try:
+        data = request.json
+        face_image = data.get('face_image')
+        
+        if not face_image:
+            return jsonify({'error': 'Missing face image'}), 400
+        
+        # Detect eye blink
+        blink_detected = detect_eye_blink(face_image)
+        
+        return jsonify({
+            'liveness_detected': blink_detected,
+            'message': 'Liveness check completed'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@voter_bp.route('/secure_verify', methods=['POST'])
+@rate_limit(10, 60)
+@csrf_protect
+def secure_verify_voter():
     """
-    Perform liveness detection using eye blink AND verify identity.
-    This prevents 'Person A' from verifying and 'Person B' from blinking.
+    Strict 2-step verification:
+    1. Validate Identity (against DB)
+    2. Validate Liveness (Open vs Closed eyes + Same person)
+    Returns a one-time vote_token.
     """
     try:
         data = request.json
         voter_id = data.get('voter_id')
-        face_image = data.get('face_image')
+        img_open = data.get('image_open')
+        img_closed = data.get('image_closed')
         
-        if not all([voter_id, face_image]):
-            return jsonify({'error': 'Missing required fields: voter_id, face_image'}), 400
-        
-        # 1. Identity Check (Binding)
+        if not all([voter_id, img_open, img_closed]):
+            return jsonify({'error': 'Missing required fields: voter_id, image_open, image_closed'}), 400
+            
+        # 1. Fetch Registered Voter
         conn = get_db_connection()
         if not conn:
             return jsonify({'error': 'Database connection failed'}), 500
@@ -219,45 +245,68 @@ def check_liveness():
         if not voter:
             return jsonify({'error': 'Voter not found'}), 404
             
-        # Generate embedding for current frame
-        current_embedding, error_msg = image_to_embedding(face_image, check_multiple_faces=False)
-        if current_embedding is None:
-            return jsonify({'error': error_msg or 'Failed to process face image during liveness'}), 400
+        # 2. Process Images and Check Liveness States
+        # Check OPEN image
+        state_open, ear_open, msg_open = get_eye_state(img_open)
+        if state_open != 'OPEN':
+            return jsonify({'error': f'Liveness Check Failed: First image must have eyes OPEN. Detected: {state_open} ({msg_open})'}), 400
+
+        # Check CLOSED image
+        state_closed, ear_closed, msg_closed = get_eye_state(img_closed)
+        if state_closed != 'CLOSED':
+            return jsonify({'error': f'Liveness Check Failed: Second image must have eyes CLOSED (Blink). Detected: {state_closed} ({msg_closed})'}), 400
             
-        # Compare with registered face
-        face_match, distance, conf = compare_embeddings(
+        # 3. Spoof Detection (Double Check)
+        is_spoof, conf_spoof, reason = detect_spoofing(img_open)
+        if is_spoof:
+             return jsonify({'error': f'Spoof detected on open-eye image: {reason}'}), 403
+             
+        # 4. Generate Embeddings for Identity Binding
+        emb_open, err1 = image_to_embedding(img_open, check_multiple_faces=False)
+        if not emb_open: return jsonify({'error': f'Face processing error (Open): {err1}'}), 400
+        
+        emb_closed, err2 = image_to_embedding(img_closed, check_multiple_faces=False)
+        if not emb_closed: return jsonify({'error': f'Face processing error (Closed): {err2}'}), 400
+        
+        # 5. Verify Identity (Match Registered Face)
+        # We verify the OPEN image primarily against the DB
+        base_threshold = current_app.config['FACE_MATCH_THRESHOLD']
+        # Relax threshold slightly if we are highly confident it's a real live person
+        dynamic_threshold = base_threshold + (0.02 if conf_spoof > 0.9 else 0)
+
+        match_db, dist_db, conf_db = compare_embeddings(
             voter['face_embedding'], 
-            current_embedding, 
+            emb_open, 
+            threshold=dynamic_threshold
+        )
+        
+        if not match_db:
+             return jsonify({'error': f'Identity Verification Failed: Face does not match registered voter. (Confidence: {conf_db}%)'}), 401
+             
+        # 6. Verify Binding (Match Open vs Closed)
+        # Ensure the person blinking is the SAME person who was verified
+        match_binding, dist_binding, conf_binding = compare_embeddings(
+            emb_open,
+            emb_closed,
             threshold=current_app.config['FACE_MATCH_THRESHOLD']
         )
         
-        print(f"DEBUG: Liveness identity check - Distance: {distance:.4f} (Threshold: {current_app.config['FACE_MATCH_THRESHOLD']}), Result: {'MATCH' if face_match else 'MISMATCH'}")
-        
-        if not face_match:
-            return jsonify({
-                'error': 'Security Alert: Identity mismatch during liveness check. Please ensure the same person is in frame.',
-                'verified': False
-            }), 403
-
-        # 2. Liveness Check (Eye Blink)
-        blink_detected = detect_eye_blink(face_image)
-        
-        vote_token = None
-        if blink_detected:
-            # IDENTITY + BLINK MATCHED on same frame. Issue License to Vote.
-            vote_token = str(uuid.uuid4())
-            # Token expires in 5 minutes (300 seconds)
-            create_vote_session(vote_token, voter_id, time.time() + 300)
-            print(f"DEBUG: Security Chain Secured. Issued vote_token for {voter_id}")
+        if not match_binding:
+            return jsonify({'error': 'Security Alert: The person blinking is NOT the same as the person verified. Request denied.'}), 403
+            
+        # 7. Success! Issue Token
+        vote_token = str(uuid.uuid4())
+        create_vote_session(vote_token, voter_id, time.time() + 300)
         
         return jsonify({
-            'liveness_detected': blink_detected,
-            'identity_verified': True,
+            'message': 'Secure verification successful',
+            'verified': True,
             'vote_token': vote_token,
-            'message': 'Liveness and Identity verification completed' if blink_detected else 'Identity verified, waiting for blink...'
+            'confidence': conf_db
         }), 200
-        
+
     except Exception as e:
+        print(f"Secure Verify Error: {e}")
         return jsonify({'error': str(e)}), 500
 
 @voter_bp.route('/vote', methods=['POST'])
@@ -271,17 +320,17 @@ def cast_vote():
         candidate = data.get('candidate')
         vote_data = data.get('vote_data', {})
         
-        if not all([vote_token, candidate]):
+        if not vote_token or not candidate:
             return jsonify({'error': 'Missing required fields: vote_token, candidate'}), 400
             
-        # 1. Validate the digital 'License to Vote' (The Token)
+        # Validate Token
         session = get_vote_session(vote_token)
         if not session:
-            return jsonify({'error': 'Invalid or expired vote token. Please perform liveness check again.'}), 401
+            return jsonify({'error': 'Invalid or expired vote token. Please verify again.'}), 401
             
         if time.time() > session['expires_at']:
             delete_vote_session(vote_token)
-            return jsonify({'error': 'Vote token expired. Please perform liveness check again.'}), 401
+            return jsonify({'error': 'Vote token expired. Please verify again.'}), 401
             
         voter_id = session['voter_id']
         
@@ -306,7 +355,7 @@ def cast_vote():
         cur.close()
         conn.close()
         
-        # 2. Burn the token so it can't be used again
+        # Burn the token to prevent replay
         delete_vote_session(vote_token)
         
         return jsonify({'message': 'Vote cast successfully'}), 201

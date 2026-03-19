@@ -36,7 +36,6 @@ def create_vote_session(token, voter_id, expires_at):
     conn = get_db_connection()
     if conn:
         cur = conn.cursor()
-        # Using vote_tokens table for liveness-to-vote binding
         cur.execute("INSERT INTO vote_tokens (token, voter_id, expires_at) VALUES (%s, %s, %s)", (token, voter_id, expires_at))
         conn.commit()
         cur.close()

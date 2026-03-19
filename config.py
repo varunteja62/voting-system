@@ -13,7 +13,7 @@ DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
     'database': os.getenv('DB_NAME', 'voting_system'),
     'user': os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', '')
+    'password': os.getenv('DB_PASSWORD', 'varun8115')
 }
 
 class Config:
@@ -28,8 +28,8 @@ class Config:
     ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
     
     # Admin Configuration
-    ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
-    ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin123')
+    ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'varun')
+    ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'varun8115')
     
     # Security Settings
     MAX_LOGIN_ATTEMPTS = 5
@@ -37,7 +37,7 @@ class Config:
     RATE_LIMIT_PER_MINUTE = 60
     
     # Face Recognition Settings
-    FACE_MATCH_THRESHOLD = 0.4
+    FACE_MATCH_THRESHOLD = 0.36
     
     # Logging
     LOG_FILE = 'voting_system.log'
