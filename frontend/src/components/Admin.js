@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:5000/api';
@@ -15,7 +15,7 @@ function Admin() {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
 
-  const fetchVotes = async () => {
+  const fetchVotes = useCallback(async () => {
     const token = localStorage.getItem('adminToken');
     if (!token) return;
 
@@ -34,9 +34,9 @@ function Admin() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [handleLogout]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     const token = localStorage.getItem('adminToken');
     if (!token) return;
 
@@ -48,7 +48,7 @@ function Admin() {
     } catch (err) {
       console.error('Failed to fetch stats:', err);
     }
-  };
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -73,12 +73,12 @@ function Admin() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('adminToken');
     setIsAuthenticated(false);
     setVotes([]);
     setStats(null);
-  };
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -94,7 +94,7 @@ function Admin() {
     } else {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchVotes, fetchStats]);
 
   if (!isAuthenticated) {
     return (
