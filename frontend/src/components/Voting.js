@@ -21,6 +21,16 @@ function Voting() {
   const [facingMode, setFacingMode] = useState('user');
   const blinkCheckInterval = useRef(null);
 
+  const fetchCandidates = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/candidates`);
+      setCandidates(response.data.candidates || []);
+    } catch (error) {
+      console.error("Error fetching candidates:", error);
+      setStatus({ type: 'error', message: 'Failed to load candidates.' });
+    }
+  }, []);
+
   useEffect(() => {
     fetchCandidates();
 
@@ -30,17 +40,7 @@ function Voting() {
         clearInterval(blinkCheckInterval.current);
       }
     };
-  }, []);
-
-  const fetchCandidates = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/candidates`);
-      setCandidates(response.data.candidates || []);
-    } catch (error) {
-      console.error("Error fetching candidates:", error);
-      setStatus({ type: 'error', message: 'Failed to load candidates.' });
-    }
-  };
+  }, [fetchCandidates]);
 
   const capture = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();

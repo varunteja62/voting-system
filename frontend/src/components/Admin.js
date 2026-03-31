@@ -15,6 +15,13 @@ function Admin() {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
 
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('adminToken');
+    setIsAuthenticated(false);
+    setVotes([]);
+    setStats(null);
+  }, []);
+
   const fetchVotes = useCallback(async () => {
     const token = localStorage.getItem('adminToken');
     if (!token) return;
@@ -72,13 +79,6 @@ function Admin() {
       setLoading(false);
     }
   };
-
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('adminToken');
-    setIsAuthenticated(false);
-    setVotes([]);
-    setStats(null);
-  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
