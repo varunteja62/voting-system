@@ -25,9 +25,10 @@ function Registration() {
     return () => {
       if (checkInterval.current) clearInterval(checkInterval.current);
     };
-  }, [startLivenessCheck]);
+  }, [livenessStep]);
 
-  const startLivenessCheck = useCallback(() => {
+  // Using function declaration instead of arrow function so it gets hoisted
+  function startLivenessCheck() {
     if (checkInterval.current) clearInterval(checkInterval.current);
 
     checkInterval.current = setInterval(async () => {
@@ -62,7 +63,7 @@ function Registration() {
         console.error("Pose check error", error);
       }
     }, 1000); // Check every 1 second
-  }, [livenessStep, capturedImages]);
+  }
 
   // const handleFingerprintScan = (fingerprintData) => {
   //   setFingerprint(fingerprintData);
