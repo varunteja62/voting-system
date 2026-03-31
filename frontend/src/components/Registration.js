@@ -61,6 +61,10 @@ function Registration() {
 
       } catch (error) {
         console.error("Pose check error", error);
+        setCurrentPose("Error");
+        if (error.response?.data?.error) {
+            setStatus({ type: 'error', message: `Backend Error: ${error.response.data.error}` });
+        }
       }
     }, 1000); // Check every 1 second
   }

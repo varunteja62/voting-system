@@ -421,48 +421,58 @@ def detect_head_pose(image_data):
                 
             face_landmarks = results.multi_face_landmarks[0]
             
-            face_3d = []
+            # Standard 3D model coordinates (General Generic Model)
+            # 1. Nose tip: (0, 0, 0)
+            # 2. Chin: (0, -330, -65)
+            # 3. Left eye left corner: (-225, 170, -135)
+            # 4. Right eye right corner: (225, 170, -135)
+            # 5. Left mouth corner: (-150, -150, -125)
+            # 6. Right mouth corner: (150, -150, -125)
+            face_3d_model = np.array([
+                (0.0, 0.0, 0.0),             
+                (0.0, -330.0, -65.0),        
+                (-225.0, 170.0, -135.0),     
+                (225.0, 170.0, -135.0),      
+                (-150.0, -150.0, -125.0),    
+                (150.0, -150.0, -125.0)      
+            ], dtype=np.float64)
+
+            # Corresponding 2D landmarks from MediaPipe
+            # Nose = 1, Chin = 152, L-Eye = 33, R-Eye = 263, L-Mouth = 61, R-Mouth = 291
             face_2d = []
-            
-            # Landmarks: Left Eye, Right Eye, Nose, Left Mouth, Right Mouth, Chin
-            landmarks_indices = [33, 263, 1, 61, 291, 152]
-            
+            landmarks_indices = [1, 152, 33, 263, 61, 291]
             for idx in landmarks_indices:
                 lm = face_landmarks.landmark[idx]
-                x, y = int(lm.x * img_w), int(lm.y * img_h)
-                face_2d.append([x, y])
-                face_3d.append([x, y, lm.z])
-                
-            face_2d = np.array(face_2d, dtype=np.float64)
-            face_3d = np.array(face_3d, dtype=np.float64)
+                face_2d.append([lm.x * img_w, lm.y * img_h])
             
-            # Camera matrix
-            focal_length = 1 * img_w
+            face_2d = np.array(face_2d, dtype=np.float64)
+
+            # Correct Camera matrix
+            focal_length = 1 * img_w # Approximate focal length (img_w for standard behavior)
             cam_matrix = np.array([
-                [focal_length, 0, img_h / 2],
-                [0, focal_length, img_w / 2],
+                [focal_length, 0, img_w / 2],
+                [0, focal_length, img_h / 2],
                 [0, 0, 1]
             ])
             
-            # Distance matrix
+            # Distance matrix (assume no lens distortion)
             dist_matrix = np.zeros((4, 1), dtype=np.float64)
             
             # Solve PnP
-            success, rot_vec, trans_vec = cv2.solvePnP(face_3d, face_2d, cam_matrix, dist_matrix)
+            success, rot_vec, trans_vec = cv2.solvePnP(face_3d_model, face_2d, cam_matrix, dist_matrix)
             
             # Get rotational matrix
             rmat, jac = cv2.Rodrigues(rot_vec)
             
-            # Get angles
+            # Get Euler angles
             angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
             
-            # angles[0] = pitch, angles[1] = yaw, angles[2] = roll
-            x = angles[0] * 360
+            # angles[1] = yaw (Y-axis rotation)
             y = angles[1] * 360
             
-            print(f"DEBUG: Head Pose Angles - Pitch(x): {x:.2f}, Yaw(y): {y:.2f}")
+            print(f"DEBUG: Head Pose Yaw: {y:.2f} (Res: {img_w}x{img_h})")
 
-            # Determine orientation
+            # Determine pose based on yaw
             if y < -10:
                 return "Left"
             elif y > 10:
