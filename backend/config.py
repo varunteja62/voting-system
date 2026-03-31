@@ -9,12 +9,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Database Configuration
-DB_CONFIG = {
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'database': os.getenv('DB_NAME', 'voting_system'),
-    'user': os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', 'varun8115')
-}
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+if DATABASE_URL:
+    # Use the full connection string if available (Render/Production)
+    DB_CONFIG = DATABASE_URL
+else:
+    # Fallback to individual components (Local)
+    DB_CONFIG = {
+        'host': os.getenv('DB_HOST', 'localhost'),
+        'database': os.getenv('DB_NAME', 'voting_system'),
+        'user': os.getenv('DB_USER', 'postgres'),
+        'password': os.getenv('DB_PASSWORD', 'varun8115')
+    }
 
 class Config:
     """Application configuration"""

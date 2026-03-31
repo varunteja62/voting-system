@@ -5,7 +5,10 @@ from config import DB_CONFIG
 def get_db_connection():
     """Create database connection"""
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+        if isinstance(DB_CONFIG, str):
+            conn = psycopg2.connect(DB_CONFIG)
+        else:
+            conn = psycopg2.connect(**DB_CONFIG)
         return conn
     except Exception as e:
         print(f"Database connection error: {e}")
