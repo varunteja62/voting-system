@@ -13,10 +13,6 @@ CORS(app)
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
 app.register_blueprint(voter_bp, url_prefix='/api')
 
-# Initialize database tables on startup
-with app.app_context():
-    init_database()
-
 if __name__ == '__main__':
     init_database()
     app.run(debug=True, port=5000)
