@@ -24,6 +24,9 @@ def check_head_pose():
             
         pose = detect_head_pose(face_image)
         
+        if pose == 'Error':
+            return jsonify({'error': 'Face detection failed. Ensure face is well-lit and clearly visible.'}), 400
+            
         return jsonify({
             'pose': pose,
             'message': f'Head pose detected: {pose}'

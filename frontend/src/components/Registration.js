@@ -15,20 +15,11 @@ function Registration() {
   const webcamRef = useRef(null);
   const [facingMode, setFacingMode] = useState('user');
 
-  // Liveness State
   const [livenessStep, setLivenessStep] = useState(0); // 0: Left, 1: Right, 2: Center/Ready
   const [currentPose, setCurrentPose] = useState('');
   const checkInterval = useRef(null);
 
-  useEffect(() => {
-    startLivenessCheck();
-    return () => {
-      if (checkInterval.current) clearInterval(checkInterval.current);
-    };
-  }, [livenessStep]);
-
-  // Using function declaration instead of arrow function so it gets hoisted
-  function startLivenessCheck() {
+  const startLivenessCheck = useCallback(() => {
     if (checkInterval.current) clearInterval(checkInterval.current);
 
     checkInterval.current = setInterval(async () => {
@@ -61,13 +52,22 @@ function Registration() {
 
       } catch (error) {
         console.error("Pose check error", error);
-        setCurrentPose("Error");
         if (error.response?.data?.error) {
-            setStatus({ type: 'error', message: `Backend Error: ${error.response.data.error}` });
+            setStatus({ type: 'error', message: `Detection Error: ${error.response.data.error}` });
+            setCurrentPose("Error");
+        } else {
+            setCurrentPose("Network Error");
         }
       }
     }, 1000); // Check every 1 second
-  }
+  }, [livenessStep, capturedImages]);
+
+  useEffect(() => {
+    startLivenessCheck();
+    return () => {
+      if (checkInterval.current) clearInterval(checkInterval.current);
+    };
+  }, [startLivenessCheck]);
 
   // const handleFingerprintScan = (fingerprintData) => {
   //   setFingerprint(fingerprintData);

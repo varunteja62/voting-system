@@ -54,6 +54,8 @@ spoof_transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
+import traceback
+
 # Initialize liveness detection (dlib or mediapipe)
 detector = None
 predictor = None
@@ -61,21 +63,16 @@ mp_face_mesh = None
 
 if DLIB_AVAILABLE:
     predictor_path = 'shape_predictor_68_face_landmarks.dat'
-    # Check if the file exists, but since we deleted it in cleanup, this will likely fail or skip.
     if os.path.exists(predictor_path):
         detector = dlib.get_frontal_face_detector()
         predictor = dlib.shape_predictor(predictor_path)
         print("Using dlib for eye blink detection")
-    else:
-        # print("Warning: shape_predictor_68_face_landmarks.dat not found. Trying alternative method.")
-        detector = None
-        predictor = None
 
-if (detector is None or predictor is None) and MEDIAPIPE_AVAILABLE:
+if MEDIAPIPE_AVAILABLE:
     mp_face_mesh = mp.solutions.face_mesh
-    print("Using MediaPipe for eye blink and head pose detection (Initialized on demand)")
+    print("MediaPipe initialized for head pose and liveness fallback")
 
-if detector is None and not MEDIAPIPE_AVAILABLE:
+if not detector and not MEDIAPIPE_AVAILABLE:
     print("Warning: No liveness detection method available. Basic verification will be used.")
 
 def align_face(img, landmarks):
@@ -471,7 +468,8 @@ def detect_head_pose(image_data):
                 return "Center"
             
     except Exception as e:
-        print(f"Error checking head pose: {e}")
+        print(f"CRITICAL: Error checking head pose: {e}")
+        traceback.print_exc()
         return "Error"
 
 def detect_spoofing(image_data):
