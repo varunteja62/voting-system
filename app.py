@@ -13,6 +13,10 @@ CORS(app)
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
 app.register_blueprint(voter_bp, url_prefix='/api')
 
+@app.route('/')
+def status():
+    return {"status": "running", "message": "Secure Voting System API is online"}
+
 if __name__ == '__main__':
     init_database()
     app.run(debug=True, port=5000)
