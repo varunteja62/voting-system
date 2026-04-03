@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://varun62-voting-system-backend.hf.space/api';
+import API_BASE_URL from '../apiConfig';
 
 // Add CSRF header for all axios requests
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';

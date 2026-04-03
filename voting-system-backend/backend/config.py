@@ -10,22 +10,23 @@ load_dotenv()
 
 # Database Configuration
 DB_CONFIG = {
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'database': os.getenv('DB_NAME', 'voting_system'),
-    'user': os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', 'varun8115')
+    'host': os.getenv('DB_HOST', 'dpg-d6rh9275r7bs7390j3s0-a.oregon-postgres.render.com'),
+    'database': os.getenv('DB_NAME', 'voting_db_s0zo'),
+    'user': os.getenv('DB_USER', 'voting_db_s0zo_user'),
+    'password': os.getenv('DB_PASSWORD', 'sfDjKX7Ttm7V1g82LskoFRt2BtLb0Cfl'),
+    'port': os.getenv('DB_PORT', '5432')
 }
 
 class Config:
     """Application configuration"""
     
     # Flask Configuration
-    SECRET_KEY = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
+    SECRET_KEY = os.getenv('FLASK_SECRET_KEY', 'sfDjKX7Ttm7V1g82LskoFRt2BtLb0Cfl_voter_sec')
     
     # Database Configuration moved to module level
     
     # CORS Configuration
-    ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
+    ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', '*').split(',')
     
     # Admin Configuration
     ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'varun')

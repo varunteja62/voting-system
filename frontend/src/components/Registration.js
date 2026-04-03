@@ -3,7 +3,7 @@ import Webcam from 'react-webcam';
 import axios from 'axios';
 // import FingerprintScanner from './FingerprintScanner';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://varun62-voting-system-backend.hf.space/api';
+import API_BASE_URL from '../apiConfig';
 
 function Registration() {
   const [voterId, setVoterId] = useState('');

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://varun62-voting-system-backend.hf.space/api';
+import API_BASE_URL from '../apiConfig';
 
 function Admin() {
   const [votes, setVotes] = useState([]);
