@@ -11,15 +11,6 @@ torchvision==0.16.0
 scipy==1.11.4
 mediapipe==0.10.8
 gunicorn==21.2.0
-
-# Optional: dlib (difficult to install on Windows)
-# If you want to use dlib, install it separately:
-# Option 1: Using conda (recommended for Windows)
-#   conda install -c conda-forge dlib
-# Option 2: Download pre-built wheel from:
-#   https://github.com/sachadee/Dlib/releases
-# Option 3: Build from source (requires Visual Studio Build Tools)
-# dlib==19.24.2
-
-python-dotenv
+setuptools
+wheel
 python-dotenv
