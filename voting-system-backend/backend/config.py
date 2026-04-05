@@ -12,17 +12,22 @@ load_dotenv()
 DATABASE_URL = os.getenv('DATABASE_URL')
 
 if DATABASE_URL:
-    # Support full connection URI from environment
+    # Use the full connection string if available (Render/Hugging Face/Production)
+    # Ensure it starts with postgresql:// (psycopg2 preference)
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     DB_CONFIG = DATABASE_URL
+    print(f"DATABASE_URL is set. Using production database.")
 else:
-    # Use individual components as fallback
+    # Use individual components as fallback (Local)
     DB_CONFIG = {
-        'host': os.getenv('DB_HOST', 'dpg-d6rh9275r7bs7390j3s0-a.oregon-postgres.render.com'),
-        'database': os.getenv('DB_NAME', 'voting_db_s0zo'),
-        'user': os.getenv('DB_USER', 'voting_db_s0zo_user'),
-        'password': os.getenv('DB_PASSWORD', 'sFdjKX7ITmZVlg02LskoF9t28tLb0CfL'),
+        'host': os.getenv('DB_HOST', 'localhost'),
+        'database': os.getenv('DB_NAME', 'voting_system'),
+        'user': os.getenv('DB_USER', 'postgres'),
+        'password': os.getenv('DB_PASSWORD', 'varun8115'),
         'port': os.getenv('DB_PORT', '5432')
     }
+    print(f"WARNING: DATABASE_URL not found. Falling back to {DB_CONFIG['host']}")
 
 class Config:
     """Application configuration"""
