@@ -11,6 +11,8 @@ services:
         generateValue: true
       - key: PORT
         value: 10000
+      - key: PYTHON_VERSION
+        value: 3.10.12
       - key: ADMIN_USERNAME
         value: varun
       - key: ADMIN_PASSWORD
