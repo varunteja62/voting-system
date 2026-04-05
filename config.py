@@ -11,22 +11,19 @@ load_dotenv()
 # Database Configuration
 DATABASE_URL = os.getenv('DATABASE_URL')
 
+# HARDCODED FALLBACK FOR NEON
+NEON_FALLBACK = "postgresql://neondb_owner:npg_tv7wdUNimg4h@ep-sweet-math-an4so7fu.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require"
+
 if DATABASE_URL:
     # Use the full connection string if available (Render/Hugging Face/Production)
-    # Ensure it starts with postgresql:// (psycopg2 preference)
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     DB_CONFIG = DATABASE_URL
     print(f"DATABASE_URL is set. Using production database.")
 else:
-    # Fallback to individual components (Local)
-    DB_CONFIG = {
-        'host': os.getenv('DB_HOST', 'localhost'),
-        'database': os.getenv('DB_NAME', 'voting_system'),
-        'user': os.getenv('DB_USER', 'postgres'),
-        'password': os.getenv('DB_PASSWORD', 'varun8115')
-    }
-    print(f"WARNING: DATABASE_URL not found. Falling back to {DB_CONFIG['host']}")
+    # Use Neon as primary fallback
+    DB_CONFIG = NEON_FALLBACK
+    print(f"DATABASE_URL not found in environment. Using hardcoded Neon fallback.")
 
 class Config:
     """Application configuration"""
