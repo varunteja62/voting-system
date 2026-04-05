@@ -12,12 +12,12 @@ load_dotenv()
 DATABASE_URL = os.getenv('DATABASE_URL')
 
 if DATABASE_URL:
-    # Use the full connection string if available (Render/Production)
+    # Use the full connection string if available (Render/Hugging Face/Production)
     # Ensure it starts with postgresql:// (psycopg2 preference)
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     DB_CONFIG = DATABASE_URL
-    print(f"Using DATABASE_URL configuration (Production)")
+    print(f"DATABASE_URL is set. Using production database.")
 else:
     # Fallback to individual components (Local)
     DB_CONFIG = {
@@ -26,7 +26,7 @@ else:
         'user': os.getenv('DB_USER', 'postgres'),
         'password': os.getenv('DB_PASSWORD', 'varun8115')
     }
-    print(f"Using individual DB components (Local: {DB_CONFIG['host']})")
+    print(f"WARNING: DATABASE_URL not found. Falling back to {DB_CONFIG['host']}")
 
 class Config:
     """Application configuration"""
