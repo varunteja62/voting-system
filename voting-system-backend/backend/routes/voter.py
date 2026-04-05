@@ -12,6 +12,36 @@ import numpy as np
 
 voter_bp = Blueprint('voter', __name__)
 
+@voter_bp.route('/health', methods=['GET'])
+def health_check():
+    """Check API and Database health"""
+    health_status = {
+        "status": "healthy",
+        "database": "connected",
+        "timestamp": time.time()
+    }
+    
+    try:
+        conn = get_db_connection()
+        if not conn:
+            health_status["status"] = "unhealthy"
+            health_status["database"] = "error"
+            health_status["details"] = "Could not connect to database"
+            return jsonify(health_status), 500
+        
+        cur = conn.cursor()
+        cur.execute("SELECT 1")
+        cur.fetchone()
+        cur.close()
+        conn.close()
+        return jsonify(health_status), 200
+        
+    except Exception as e:
+        health_status["status"] = "unhealthy"
+        health_status["database"] = "error"
+        health_status["details"] = str(e)
+        return jsonify(health_status), 500
+
 @voter_bp.route('/check_head_pose', methods=['POST'])
 def check_head_pose():
     """Check head pose direction"""

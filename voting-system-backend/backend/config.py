@@ -9,13 +9,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Database Configuration
-DB_CONFIG = {
-    'host': os.getenv('DB_HOST', 'dpg-d6rh9275r7bs7390j3s0-a.oregon-postgres.render.com'),
-    'database': os.getenv('DB_NAME', 'voting_db_s0zo'),
-    'user': os.getenv('DB_USER', 'voting_db_s0zo_user'),
-    'password': os.getenv('DB_PASSWORD', 'sfDjKX7Ttm7V1g82LskoFRt2BtLb0Cfl'),
-    'port': os.getenv('DB_PORT', '5432')
-}
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+if DATABASE_URL:
+    # Support full connection URI from environment
+    DB_CONFIG = DATABASE_URL
+else:
+    # Use individual components as fallback
+    DB_CONFIG = {
+        'host': os.getenv('DB_HOST', 'dpg-d6rh9275r7bs7390j3s0-a.oregon-postgres.render.com'),
+        'database': os.getenv('DB_NAME', 'voting_db_s0zo'),
+        'user': os.getenv('DB_USER', 'voting_db_s0zo_user'),
+        'password': os.getenv('DB_PASSWORD', 'sFdjKX7ITmZVlg02LskoF9t28tLb0CfL'),
+        'port': os.getenv('DB_PORT', '5432')
+    }
 
 class Config:
     """Application configuration"""
@@ -26,7 +33,7 @@ class Config:
     # Database Configuration moved to module level
     
     # CORS Configuration
-    ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', '*').split(',')
+    ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', 'https://voting-system-proto.vercel.app,*').split(',')
     
     # Admin Configuration
     ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'varun')
