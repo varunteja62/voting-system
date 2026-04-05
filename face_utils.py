@@ -450,8 +450,9 @@ def detect_head_pose(image_data):
             
     except Exception as e:
         print(f"CRITICAL: Error checking head pose: {e}")
+        import traceback
         traceback.print_exc()
-        return "Error"
+        return f"Error: {str(e)}"
 
 def detect_spoofing(image_data):
     """
