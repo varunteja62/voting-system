@@ -49,3 +49,7 @@ shape_predictor_68_face_landmarks.dat
 # Logs
 *.log
 
+# Environment variables
+.env
+backend/.env
+frontend/.env
