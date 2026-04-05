@@ -18,8 +18,10 @@ app.register_blueprint(voter_bp, url_prefix='/api')
 def status():
     return {"status": "running", "message": "Secure Voting System API is online"}
 
+# Initialize database on app startup
+init_database()
+
 if __name__ == '__main__':
-    init_database()
     # Support Hugging Face port binding
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
