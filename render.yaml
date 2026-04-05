@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: voting-system-backend
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: gunicorn --chdir backend app:app
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Set this in Render Dashboard
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: PORT
+        value: 10000
+      - key: ADMIN_USERNAME
+        value: varun
+      - key: ADMIN_PASSWORD
+        value: varun8115
+      - key: ALLOWED_ORIGINS
+        value: "*" # Update this with your frontend URL later
