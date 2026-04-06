@@ -24,7 +24,7 @@ A secure biometric-based online voting system with face recognition and liveness
 - Flask (Python web framework)
 - PostgreSQL (Database)
 - FaceNet (Face recognition)
-- dlib (Eye blink detection)
+- MediaPipe (Eye blink and head pose detection)
 - MTCNN (Face detection)
 
 ### Frontend
