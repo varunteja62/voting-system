@@ -3,7 +3,6 @@ import base64
 import cv2
 from PIL import Image
 import io
-import face_recognition
 from facenet_pytorch import MTCNN, InceptionResnetV1
 import torch
 from scipy.spatial.distance import cosine
