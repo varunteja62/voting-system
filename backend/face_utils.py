@@ -13,15 +13,7 @@ import torchvision.transforms as transforms
 from scipy.fftpack import fft2
 from numpy.fft import fftshift
 
-# Try to import dlib (optional - can use alternative method)
-try:
-    import dlib
-    DLIB_AVAILABLE = True
-except ImportError:
-    DLIB_AVAILABLE = False
-    print("Warning: dlib not available. Using alternative liveness detection method.")
-
-# Try to import mediapipe as alternative for liveness detection
+# Try to import mediapipe for liveness detection
 try:
     import mediapipe as mp
     MEDIAPIPE_AVAILABLE = True
@@ -55,23 +47,14 @@ spoof_transform = transforms.Compose([
 
 import traceback
 
-# Initialize liveness detection (dlib or mediapipe)
-detector = None
-predictor = None
+# Initialize liveness detection
 mp_face_mesh = None
-
-if DLIB_AVAILABLE:
-    predictor_path = 'shape_predictor_68_face_landmarks.dat'
-    if os.path.exists(predictor_path):
-        detector = dlib.get_frontal_face_detector()
-        predictor = dlib.shape_predictor(predictor_path)
-        print("Using dlib for eye blink detection")
 
 if MEDIAPIPE_AVAILABLE:
     mp_face_mesh = mp.solutions.face_mesh
-    print("MediaPipe initialized for head pose and liveness fallback")
+    print("MediaPipe initialized for head pose and blink detection")
 
-if not detector and not MEDIAPIPE_AVAILABLE:
+if not MEDIAPIPE_AVAILABLE:
     print("Warning: No liveness detection method available. Basic verification will be used.")
 
 def align_face(img, landmarks):
@@ -282,37 +265,8 @@ def get_eye_state(image_data):
         
         ear = 0.0
         
-        # Method 1: Use dlib if available
-        if detector is not None and predictor is not None:
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            faces = detector(gray)
-            
-            if len(faces) == 0:
-                return "UNKNOWN", 0.0, "No face detected"
-            
-            # Get facial landmarks
-            landmarks = predictor(gray, faces[0])
-            # ... (Logic identical to original but returning state)
-            # Simplified for brevity in this specific replacement, relying on original logic flow
-            # We need to reimplement the EAR calcs here as we are replacing the function
-            
-            landmarks_np = np.array([[p.x, p.y] for p in landmarks.parts()])
-            left_eye = landmarks_np[36:42]
-            right_eye = landmarks_np[42:48]
-            
-            def eye_aspect_ratio(eye):
-                A = np.linalg.norm(eye[1] - eye[5])
-                B = np.linalg.norm(eye[2] - eye[4])
-                C = np.linalg.norm(eye[0] - eye[3])
-                ear = (A + B) / (2.0 * C)
-                return ear
-            
-            left_ear = eye_aspect_ratio(left_eye)
-            right_ear = eye_aspect_ratio(right_eye)
-            ear = (left_ear + right_ear) / 2.0
-            
-        # Method 2: Use MediaPipe if available
-        elif MEDIAPIPE_AVAILABLE:
+        # Use MediaPipe if available
+        if MEDIAPIPE_AVAILABLE:
             rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             
             with mp_face_mesh.FaceMesh(
