@@ -437,3 +437,107 @@ video {
 ::-webkit-scrollbar-track { background: var(--bg-color-1); }
 ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 6px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-1); }
+
+/* Responsive Design for Tablets and iPads */
+@media (max-width: 768px) {
+  .container {
+    padding: 20px 15px;
+  }
+  .nav {
+    flex-direction: column;
+    padding: 15px 20px;
+    gap: 15px;
+    border-radius: 16px;
+  }
+  .nav-links {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+  .nav-links a {
+    padding: 10px 15px;
+    font-size: 0.95rem;
+  }
+  .theme-toggle {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+  }
+  .card {
+    padding: 35px 25px;
+    margin: 20px auto;
+  }
+  h1 {
+    font-size: 2.2rem;
+    margin-bottom: 25px;
+  }
+  h2 {
+    font-size: 1.5rem;
+  }
+  .stat-card .stat-value {
+    font-size: 3rem;
+  }
+  .candidates-list label {
+    padding: 16px;
+    font-size: 1rem;
+  }
+}
+
+/* Responsive Design for Mobile Phones */
+@media (max-width: 480px) {
+  .nav {
+    padding: 15px 10px;
+  }
+  .nav-links {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+  .nav-links li {
+    width: 100%;
+    text-align: center;
+  }
+  .nav-links a {
+    display: block;
+    width: 100%;
+  }
+  .theme-toggle {
+    top: 10px;
+    right: 15px;
+  }
+  .card {
+    padding: 25px 20px;
+    margin: 15px auto;
+  }
+  h1 {
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+  }
+  .form-group {
+    margin-bottom: 20px;
+  }
+  /* Fix overlapping in candidate list */
+  .candidates-list label {
+    padding: 15px;
+    font-size: 0.95rem;
+    align-items: flex-start;
+    gap: 10px;
+    flex-wrap: wrap; 
+  }
+  .candidates-list input[type="radio"] {
+    margin-top: 2px;
+  }
+  input[type="text"],
+  input[type="password"],
+  input[type="email"] {
+    padding: 14px 15px;
+    font-size: 15px;
+  }
+  button {
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+  .video-container {
+    border-radius: 16px;
+  }
+}
