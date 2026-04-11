@@ -25,6 +25,7 @@ def init_database():
             CREATE TABLE IF NOT EXISTS voters (
                 voter_id VARCHAR(50) PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
+                password_hash VARCHAR(255),
                 face_embedding BYTEA NOT NULL,
                 registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
