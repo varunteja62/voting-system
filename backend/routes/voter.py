@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
+from werkzeug.security import generate_password_hash, check_password_hash
 from psycopg2 import IntegrityError
 from psycopg2.extras import RealDictCursor
 import json
@@ -44,9 +45,10 @@ def register_voter():
         data = request.json
         voter_id = data.get('voter_id')
         name = data.get('name')
+        password = data.get('password')
         face_images = data.get('face_images', []) # expecting an array of 3 images
         
-        if not all([voter_id, name]) or len(face_images) == 0:
+        if not all([voter_id, name, password]) or len(face_images) == 0:
             return jsonify({'error': 'Missing required fields or images'}), 400
         
         # Check if voter already exists
@@ -90,12 +92,14 @@ def register_voter():
         if not conn:
             return jsonify({'error': 'Database connection failed'}), 500
         
+        password_hash = generate_password_hash(password)
+        
         cur = conn.cursor()
         try:
             cur.execute("""
-                INSERT INTO voters (voter_id, name, face_embedding)
-                VALUES (%s, %s, %s)
-            """, (voter_id, name, final_embedding_bytes))
+                INSERT INTO voters (voter_id, name, password_hash, face_embedding)
+                VALUES (%s, %s, %s, %s)
+            """, (voter_id, name, password_hash, final_embedding_bytes))
             conn.commit()
             return jsonify({'message': 'Voter registered successfully'}), 201
         except IntegrityError:
@@ -104,6 +108,46 @@ def register_voter():
             cur.close()
             conn.close()
             
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@voter_bp.route('/login', methods=['POST'])
+@rate_limit(10, 60) # 10 attempts per minute
+def login_voter():
+    """Login a voter using ID and password"""
+    try:
+        data = request.json
+        voter_id = data.get('voter_id')
+        password = data.get('password')
+        
+        if not all([voter_id, password]):
+            return jsonify({'error': 'Missing required fields'}), 400
+            
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database connection failed'}), 500
+            
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT voter_id, name, password_hash FROM voters WHERE voter_id = %s", (voter_id,))
+        voter = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if not voter:
+            return jsonify({'error': 'Voter not found'}), 404
+            
+        # Verify password
+        if not check_password_hash(voter['password_hash'], password):
+            return jsonify({'error': 'Invalid password'}), 401
+            
+        return jsonify({
+            'message': 'Login successful',
+            'voter': {
+                'id': voter['voter_id'],
+                'name': voter['name']
+            }
+        }), 200
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

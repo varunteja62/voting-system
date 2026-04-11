@@ -8,6 +8,8 @@ import API_BASE_URL from '../apiConfig';
 function Registration() {
   const [voterId, setVoterId] = useState('');
   const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [capturedImages, setCapturedImages] = useState({ left: null, right: null, center: null });
   const [status, setStatus] = useState({ type: '', message: '' });
   const [isProcessing, setIsProcessing] = useState(false);
@@ -96,8 +98,18 @@ function Registration() {
       return;
     }
 
-    if (!voterId || !name) {
+    if (!voterId || !name || !password || !confirmPassword) {
       setStatus({ type: 'error', message: 'Please fill in all fields' });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setStatus({ type: 'error', message: 'Passwords do not match' });
+      return;
+    }
+
+    if (password.length < 6) {
+      setStatus({ type: 'error', message: 'Password must be at least 6 characters long' });
       return;
     }
 
@@ -108,12 +120,15 @@ function Registration() {
       const response = await axios.post(`${API_BASE_URL}/register`, {
         voter_id: voterId,
         name: name,
+        password: password,
         face_images: [capturedImages.left, capturedImages.right, capturedImages.center],
       });
 
       setStatus({ type: 'success', message: response.data.message || 'Registration successful!' });
       setVoterId('');
       setName('');
+      setPassword('');
+      setConfirmPassword('');
       setCapturedImages({ left: null, right: null, center: null });
     } catch (error) {
       setStatus({
@@ -150,6 +165,30 @@ function Registration() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Enter your full name"
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="password">Password *</label>
+          <input
+            type="password"
+            id="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Create a secure password"
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="confirmPassword">Confirm Password *</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Re-enter your password"
             required
           />
         </div>
