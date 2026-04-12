@@ -1,4 +1,5 @@
 import React from 'react';
+import VoterSlip from './VoterSlip';
 
 function Home({ isLoggedIn, voterName, onLaunchLogin, onLaunchRegister, onGoToVote }) {
   return (
@@ -51,6 +52,8 @@ function Home({ isLoggedIn, voterName, onLaunchLogin, onLaunchRegister, onGoToVo
           <p>Register and vote in minutes from anywhere, with immediate verification and feedback.</p>
         </div>
       </section>
+      
+      <VoterSlip />
 
       <section className="how-it-works">
         <h2>How it Works</h2>

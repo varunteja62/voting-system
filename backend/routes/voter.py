@@ -10,6 +10,8 @@ from face_utils import image_to_embedding, compare_embeddings, detect_eye_blink,
 from session_store import create_vote_session, get_vote_session, delete_vote_session
 from decorators import rate_limit, csrf_protect
 import numpy as np
+import random
+import string
 
 voter_bp = Blueprint('voter', __name__)
 
@@ -43,7 +45,7 @@ def register_voter():
     """Register a new voter"""
     try:
         data = request.json
-        voter_id = data.get('voter_id')
+        voter_id = data.get('voter_id', '').strip().upper()
         name = data.get('name')
         password = data.get('password')
         face_images = data.get('face_images', []) # expecting an array of 3 images
@@ -87,21 +89,28 @@ def register_voter():
         avg_embedding = avg_embedding / np.linalg.norm(avg_embedding)
         final_embedding_bytes = avg_embedding.tobytes()
         
+        # Generate unique slip string
+        slip_string = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+        
         # Store in database
         conn = get_db_connection()
         if not conn:
             return jsonify({'error': 'Database connection failed'}), 500
         
         password_hash = generate_password_hash(password)
+        voter_image = face_images[0] # Store the first image for the slip
         
         cur = conn.cursor()
         try:
             cur.execute("""
-                INSERT INTO voters (voter_id, name, password_hash, face_embedding)
-                VALUES (%s, %s, %s, %s)
-            """, (voter_id, name, password_hash, final_embedding_bytes))
+                INSERT INTO voters (voter_id, name, password_hash, face_embedding, slip_string, voter_image)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (voter_id, name, password_hash, final_embedding_bytes, slip_string, voter_image))
             conn.commit()
-            return jsonify({'message': 'Voter registered successfully'}), 201
+            return jsonify({
+                'message': 'Voter registered successfully',
+                'slip_string': slip_string
+            }), 201
         except IntegrityError:
             return jsonify({'error': 'Voter ID already exists'}), 400
         finally:
@@ -117,7 +126,7 @@ def login_voter():
     """Login a voter using ID and password"""
     try:
         data = request.json
-        voter_id = data.get('voter_id')
+        voter_id = data.get('voter_id', '').strip().upper()
         password = data.get('password')
         
         if not all([voter_id, password]):
@@ -158,7 +167,7 @@ def verify_voter():
     """Verify voter identity before voting"""
     try:
         data = request.json
-        voter_id = data.get('voter_id')
+        voter_id = data.get('voter_id', '').strip().upper()
         face_image = data.get('face_image')
         
         if not all([voter_id, face_image]):
@@ -271,12 +280,13 @@ def secure_verify_voter():
     """
     try:
         data = request.json
-        voter_id = data.get('voter_id')
+        voter_id = data.get('voter_id', '').strip().upper()
         img_open = data.get('image_open')
         img_closed = data.get('image_closed')
+        slip_string = data.get('slip_string')
         
-        if not all([voter_id, img_open, img_closed]):
-            return jsonify({'error': 'Missing required fields: voter_id, image_open, image_closed'}), 400
+        if not all([voter_id, img_open, img_closed, slip_string]):
+            return jsonify({'error': 'Missing required fields: voter_id, image_open, image_closed, slip_string'}), 400
             
         # 1. Fetch Registered Voter
         conn = get_db_connection()
@@ -284,7 +294,7 @@ def secure_verify_voter():
             return jsonify({'error': 'Database connection failed'}), 500
         
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT face_embedding FROM voters WHERE voter_id = %s", (voter_id,))
+        cur.execute("SELECT face_embedding, slip_string FROM voters WHERE voter_id = %s", (voter_id,))
         voter = cur.fetchone()
         cur.close()
         conn.close()
@@ -292,7 +302,11 @@ def secure_verify_voter():
         if not voter:
             return jsonify({'error': 'Voter not found'}), 404
             
-        # 2. Process Images and Check Liveness States
+        # 2. Verify Slip String
+        if voter['slip_string'] != slip_string:
+            return jsonify({'error': 'Invalid Voter Slip String. Verification failed.'}), 401
+            
+        # 3. Process Images and Check Liveness States
         # Check OPEN image
         state_open, ear_open, msg_open = get_eye_state(img_open)
         if state_open != 'OPEN':
@@ -406,6 +420,46 @@ def cast_vote():
         delete_vote_session(vote_token)
         
         return jsonify({'message': 'Vote cast successfully'}), 201
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@voter_bp.route('/secure_voter_slip', methods=['POST'])
+def get_voter_slip():
+    """Fetch voter details for the slip securely with password authentication"""
+    try:
+        data = request.json
+        voter_id = data.get('voter_id', '').strip().upper()
+        password = data.get('password')
+        
+        if not voter_id or not password:
+            return jsonify({'error': 'Voter ID and Password are required'}), 400
+            
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database connection failed'}), 500
+        
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT voter_id, name, password_hash, voter_image, slip_string FROM voters WHERE voter_id = %s", (voter_id,))
+        voter = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if not voter:
+            return jsonify({'error': 'Voter not found'}), 404
+            
+        # Verify Password
+        if not check_password_hash(voter['password_hash'], password):
+            return jsonify({'error': 'Invalid Voter ID or Password'}), 401
+            
+        # Return details (excluding password_hash)
+        result = {
+            'voter_id': voter['voter_id'],
+            'name': voter['name'],
+            'voter_image': voter['voter_image'],
+            'slip_string': voter['slip_string']
+        }
+        return jsonify(result), 200
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500

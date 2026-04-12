@@ -6,7 +6,8 @@ import Admin from './components/Admin';
 import Home from './components/Home';
 import Login from './components/Login';
 import Modal from './components/Modal';
-import logo from './assets/images/logo.png';
+import VoterSlip from './components/VoterSlip';
+import logo from './assets/images/logo.jpeg';
 import './App.css';
 
 function AppContent() {
@@ -62,6 +63,9 @@ function AppContent() {
           <li>
             <Link to="/admin" className="nav-item admin-link">Admin</Link>
           </li>
+          <li>
+            <a href="/#voter-slip-section" className="nav-item">Voter Slip</a>
+          </li>
           {isLoggedIn ? (
             <li>
               <button onClick={handleLogout} className="logout-btn">Logout</button>
@@ -90,6 +94,7 @@ function AppContent() {
           } />
           <Route path="/vote" element={<Voting />} />
           <Route path="/admin" element={<Admin />} />
+
           {/* Legacy routes for direct access if needed */}
           <Route path="/register" element={<Registration />} />
         </Routes>
