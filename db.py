@@ -27,6 +27,8 @@ def init_database():
                 name VARCHAR(255) NOT NULL,
                 password_hash VARCHAR(255),
                 face_embedding BYTEA NOT NULL,
+                slip_string VARCHAR(10) UNIQUE,
+                voter_image TEXT,
                 registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
