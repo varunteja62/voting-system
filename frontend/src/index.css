@@ -439,6 +439,14 @@ video {
   min-width: 200px;
 }
 
+/* Smaller login/register buttons in hero */
+.hero-small-btn {
+  min-width: 140px;
+  padding: 12px 28px !important;
+  font-size: 0.9rem !important;
+  letter-spacing: 0.5px !important;
+}
+
 .welcome-box {
   background: var(--glass-bg);
   padding: 40px;
@@ -450,6 +458,119 @@ video {
 .welcome-box h2 {
   border: none;
   margin-bottom: 15px;
+}
+
+/* Quick Access Section */
+.quick-access-section {
+  padding: 20px 20px 60px;
+}
+
+.section-title {
+  text-align: center;
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin-bottom: 40px;
+  background: linear-gradient(135deg, var(--text-heading) 0%, var(--accent-1) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  border: none;
+}
+
+.quick-access-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.quick-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 30px;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.quick-card:hover::before {
+  opacity: 1;
+}
+
+.quick-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--accent-1);
+  box-shadow: 0 20px 50px var(--glass-shadow);
+}
+
+.quick-card-icon {
+  font-size: 2.8rem;
+  flex-shrink: 0;
+}
+
+.quick-card-body {
+  flex: 1;
+}
+
+.quick-card-body h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin-bottom: 8px;
+}
+
+.quick-card-body p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.quick-card-note {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--accent-2);
+  font-weight: 600;
+  background: rgba(236, 72, 153, 0.1);
+  padding: 3px 10px;
+  border-radius: 50px;
+  border: 1px solid rgba(236, 72, 153, 0.2);
+}
+
+.quick-card-arrow {
+  font-size: 1.5rem;
+  color: var(--accent-1);
+  font-weight: 700;
+  transition: transform 0.3s ease;
+}
+
+.quick-card:hover .quick-card-arrow {
+  transform: translateX(6px);
+}
+
+@media (max-width: 640px) {
+  .quick-access-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Features */

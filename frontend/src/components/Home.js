@@ -1,9 +1,10 @@
 import React from 'react';
-import VoterSlip from './VoterSlip';
 
 function Home({ isLoggedIn, voterName, onLaunchLogin, onLaunchRegister, onGoToVote }) {
+
   return (
     <div className="home-container">
+      {/* ── Hero ── */}
       <section className="hero">
         <div className="hero-bg-overlay"></div>
         <div className="hero-content">
@@ -11,7 +12,7 @@ function Home({ isLoggedIn, voterName, onLaunchLogin, onLaunchRegister, onGoToVo
           <p className="hero-subtitle">
             Next-generation biometric election platform. Secure, transparent, and tamper-proof voting for the modern era.
           </p>
-          
+
           {isLoggedIn ? (
             <div className="hero-actions">
               <div className="welcome-box">
@@ -24,10 +25,10 @@ function Home({ isLoggedIn, voterName, onLaunchLogin, onLaunchRegister, onGoToVo
             </div>
           ) : (
             <div className="hero-actions">
-              <button className="cta-button primary" onClick={onLaunchLogin}>
+              <button className="cta-button hero-small-btn primary" onClick={onLaunchLogin}>
                 Voter Login
               </button>
-              <button className="cta-button secondary" onClick={onLaunchRegister}>
+              <button className="cta-button hero-small-btn secondary" onClick={onLaunchRegister}>
                 Register Now
               </button>
             </div>
@@ -35,6 +36,7 @@ function Home({ isLoggedIn, voterName, onLaunchLogin, onLaunchRegister, onGoToVo
         </div>
       </section>
 
+      {/* ── Feature Cards ── */}
       <section className="features">
         <div className="feature-card">
           <div className="feature-icon">🛡️</div>
@@ -52,35 +54,9 @@ function Home({ isLoggedIn, voterName, onLaunchLogin, onLaunchRegister, onGoToVo
           <p>Register and vote in minutes from anywhere, with immediate verification and feedback.</p>
         </div>
       </section>
-      
-      <VoterSlip />
 
-      <section className="how-it-works">
-        <h2>How it Works</h2>
-        <div className="steps-container">
-          <div className="step">
-            <span className="step-number">1</span>
-            <h4>Register</h4>
-            <p>Create your profile and capture your biometric face map.</p>
-          </div>
-          <div className="step">
-            <span className="step-number">2</span>
-            <h4>Login</h4>
-            <p>Securely sign in using your Voter ID and password.</p>
-          </div>
-          <div className="step">
-            <span className="step-number">3</span>
-            <h4>Verify</h4>
-            <p>Complete a quick face check to confirm your identity at the polls.</p>
-          </div>
-          <div className="step">
-            <span className="step-number">4</span>
-            <h4>Vote</h4>
-            <p>Select your candidate and securely cast your digital ballot.</p>
-          </div>
-        </div>
-      </section>
-      
+
+
       <footer className="footer">
         <p>&copy; 2026 NyayaVote System. All rights reserved.</p>
         <div className="footer-links">

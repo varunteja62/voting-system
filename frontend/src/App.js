@@ -6,7 +6,7 @@ import Admin from './components/Admin';
 import Home from './components/Home';
 import Login from './components/Login';
 import Modal from './components/Modal';
-import VoterSlip from './components/VoterSlip';
+
 import logo from './assets/images/logo.jpeg';
 import './App.css';
 
@@ -62,9 +62,6 @@ function AppContent() {
           )}
           <li>
             <Link to="/admin" className="nav-item admin-link">Admin</Link>
-          </li>
-          <li>
-            <a href="/#voter-slip-section" className="nav-item">Voter Slip</a>
           </li>
           {isLoggedIn ? (
             <li>
