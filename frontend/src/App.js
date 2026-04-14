@@ -11,7 +11,7 @@ import logo from './assets/images/logo.jpeg';
 import './App.css';
 
 function AppContent() {
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState('light');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);

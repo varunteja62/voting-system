@@ -19,6 +19,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy all backend code
 COPY backend/ .
 
+# Pre-download ML models to bake into the image
+RUN python download_models.py
+
 # Set environment variables for config and performance
 ENV FLASK_APP=app.py
 ENV PORT=7860
