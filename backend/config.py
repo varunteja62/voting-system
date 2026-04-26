@@ -51,3 +51,10 @@ class Config:
     # Logging
     LOG_FILE = 'voting_system.log'
 
+    # SMTP Configuration
+    SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
+    SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
+    SMTP_USERNAME = os.getenv('SMTP_USERNAME')
+    SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
+    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', SMTP_USERNAME)
+

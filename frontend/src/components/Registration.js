@@ -1,22 +1,27 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 // import FingerprintScanner from './FingerprintScanner';
 
-import API_BASE_URL from '../apiConfig';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 function Registration() {
   const [voterId, setVoterId] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [capturedImages, setCapturedImages] = useState({ left: null, right: null, center: null });
   const [status, setStatus] = useState({ type: '', message: '' });
   const [isProcessing, setIsProcessing] = useState(false);
+  const navigate = useNavigate();
 
   const webcamRef = useRef(null);
   const [facingMode, setFacingMode] = useState('user');
 
+  // Liveness State
   const [livenessStep, setLivenessStep] = useState(0); // 0: Left, 1: Right, 2: Center/Ready
   const [currentPose, setCurrentPose] = useState('');
   const checkInterval = useRef(null);
@@ -54,12 +59,6 @@ function Registration() {
 
       } catch (error) {
         console.error("Pose check error", error);
-        if (error.response?.data?.error) {
-            setStatus({ type: 'error', message: `Detection Error: ${error.response.data.error}` });
-            setCurrentPose("Error");
-        } else {
-            setCurrentPose("Network Error");
-        }
       }
     }, 1000); // Check every 1 second
   }, [livenessStep, capturedImages]);
@@ -98,18 +97,13 @@ function Registration() {
       return;
     }
 
-    if (!voterId || !name || !password || !confirmPassword) {
+    if (!voterId || !name || !password || !phone || !email) {
       setStatus({ type: 'error', message: 'Please fill in all fields' });
       return;
     }
 
     if (password !== confirmPassword) {
       setStatus({ type: 'error', message: 'Passwords do not match' });
-      return;
-    }
-
-    if (password.length < 6) {
-      setStatus({ type: 'error', message: 'Password must be at least 6 characters long' });
       return;
     }
 
@@ -121,14 +115,28 @@ function Registration() {
         voter_id: voterId,
         name: name,
         password: password,
+        phone: phone,
+        email: email,
         face_images: [capturedImages.left, capturedImages.right, capturedImages.center],
       });
 
       setStatus({ type: 'success', message: response.data.message || 'Registration successful!' });
+      
+      // Store session and redirect to home
+      localStorage.setItem('voter_id', voterId);
+      localStorage.setItem('voter_name', name);
+      localStorage.setItem('voter_slip', response.data.slip_string);
+      
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
+
       setVoterId('');
       setName('');
       setPassword('');
       setConfirmPassword('');
+      setPhone('');
+      setEmail('');
       setCapturedImages({ left: null, right: null, center: null });
     } catch (error) {
       setStatus({
@@ -141,8 +149,11 @@ function Registration() {
   };
 
   return (
-    <div className="card">
-      <h1>Voter Registration</h1>
+    <div className="card fade-in" style={{ maxWidth: '800px', margin: '40px auto' }}>
+      <h1 className="card-title">Voter Registration</h1>
+      <p style={{ color: 'var(--text-muted)', marginBottom: '30px', fontSize: '14px' }}>
+        Complete your biometric profile to participate in the upcoming election. Fields marked with * are mandatory.
+      </p>
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
@@ -170,13 +181,37 @@ function Registration() {
         </div>
 
         <div className="form-group">
+          <label htmlFor="email">Email Address *</label>
+          <input
+            type="email"
+            id="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="e.g. john@example.com"
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="phone">Phone Number *</label>
+          <input
+            type="tel"
+            id="phone"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="e.g. +91 9876543210"
+            required
+          />
+        </div>
+
+        <div className="form-group">
           <label htmlFor="password">Password *</label>
           <input
             type="password"
             id="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Create a secure password"
+            placeholder="••••••••"
             required
           />
         </div>
@@ -188,7 +223,7 @@ function Registration() {
             id="confirmPassword"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Re-enter your password"
+            placeholder="••••••••"
             required
           />
         </div>
@@ -272,14 +307,14 @@ function Registration() {
         </div>
 
         {status.message && (
-          <div className={`status-message status-${status.type}`}>
+          <div className={`notice notice-${status.type}`}>
             {status.message}
           </div>
         )}
 
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <button type="submit" disabled={isProcessing}>
-            {isProcessing ? 'Registering...' : 'Register Voter'}
+        <div style={{ textAlign: 'center', marginTop: '30px', borderTop: '1px solid var(--border-light)', paddingTop: '20px' }}>
+          <button type="submit" disabled={isProcessing} style={{ width: '100%', padding: '15px' }}>
+            {isProcessing ? 'Processing biometrics...' : 'Register as Voter'}
           </button>
         </div>
       </form>

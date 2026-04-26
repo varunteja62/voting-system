@@ -2,14 +2,11 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import axios from 'axios';
 
-import API_BASE_URL from '../apiConfig';
-
-// Add CSRF header for all axios requests
-axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 function Voting() {
-  const [voterId, setVoterId] = useState('');
-  const [step, setStep] = useState(1); // 1: ID input, 2: Face verify, 3: Liveness, 4: Vote
+  const [voterId, setVoterId] = useState(localStorage.getItem('voter_id') || '');
+  const [step, setStep] = useState(localStorage.getItem('voter_id') ? 2 : 1); // Skip ID input if already logged in
   const [status, setStatus] = useState({ type: '', message: '' });
   const [isProcessing, setIsProcessing] = useState(false);
   const [candidate, setCandidate] = useState('');
@@ -21,18 +18,13 @@ function Voting() {
   const [facingMode, setFacingMode] = useState('user');
   const blinkCheckInterval = useRef(null);
 
-  const fetchCandidates = useCallback(async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/candidates`);
-      setCandidates(response.data.candidates || []);
-    } catch (error) {
-      console.error("Error fetching candidates:", error);
-      setStatus({ type: 'error', message: 'Failed to load candidates.' });
-    }
-  }, []);
-
   useEffect(() => {
     fetchCandidates();
+
+    // If we have a voterId from localStorage, set status to welcome them
+    if (localStorage.getItem('voter_id')) {
+      setStatus({ type: 'info', message: 'Welcome back! Please proceed with face verification.' });
+    }
 
     // Cleanup interval on unmount
     return () => {
@@ -40,7 +32,17 @@ function Voting() {
         clearInterval(blinkCheckInterval.current);
       }
     };
-  }, [fetchCandidates]);
+  }, []);
+
+  const fetchCandidates = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/candidates`);
+      setCandidates(response.data.candidates || []);
+    } catch (error) {
+      console.error("Error fetching candidates:", error);
+      setStatus({ type: 'error', message: 'Failed to load candidates.' });
+    }
+  };
 
   const capture = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
@@ -204,8 +206,8 @@ function Voting() {
   };
 
   return (
-    <div className="card">
-      <h1>Cast Your Vote</h1>
+    <div className="card fade-in">
+      <h1 className="card-title">Secure Voting Terminal</h1>
 
       {step === 1 && (
         <form onSubmit={(e) => {
@@ -224,51 +226,22 @@ function Voting() {
               id="voterId"
               value={voterId}
               onChange={(e) => setVoterId(e.target.value)}
-              placeholder="Enter your voter ID"
+              placeholder="e.g. V123456"
               required
             />
           </div>
 
-          <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <button type="submit" disabled={!voterId}>
-              Next: Face Verification
-            </button>
-          </div>
+          <button type="submit" disabled={!voterId} style={{ width: '100%' }}>
+            Continue to Face Verification
+          </button>
         </form>
       )}
 
       {step === 2 && (
         <div>
-          <h2>Step 2: Face Verification</h2>
-          <div className="video-container">
-            <Webcam
-              audio={false}
-              ref={webcamRef}
-              screenshotFormat="image/jpeg"
-              videoConstraints={{
-                facingMode: facingMode,
-                width: 640,
-                height: 480
-              }}
-            />
-          </div>
-          <div style={{ textAlign: 'center', marginTop: '10px' }}>
-            <button onClick={handleFaceVerification} disabled={isProcessing}>
-              {isProcessing ? 'Verifying...' : 'Verify Face'}
-            </button>
-            <button onClick={() => setFacingMode(facingMode === 'user' ? 'environment' : 'user')}>
-              Switch Camera
-            </button>
-            <button onClick={reset}>Reset</button>
-          </div>
-        </div>
-      )}
-
-      {step === 3 && (
-        <div>
-          <h2>Step 3: Liveness Detection</h2>
-          <p style={{ marginBottom: '15px', color: '#666' }}>
-            Please blink your eyes naturally. The system will detect your blink to ensure you are a real person.
+          <h2>Face Identity Verification</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+            Looking directly at the camera to verify your biometric profile.
           </p>
           <div className="video-container">
             <Webcam
@@ -282,49 +255,95 @@ function Voting() {
               }}
             />
           </div>
-          <div style={{ textAlign: 'center', marginTop: '10px' }}>
-            <button onClick={reset}>Reset</button>
+          <div style={{ textAlign: 'center', marginTop: '20px', display: 'flex', gap: '10px' }}>
+            <button onClick={handleFaceVerification} disabled={isProcessing} style={{ flex: 2 }}>
+              {isProcessing ? 'Verifying...' : 'Verify Face'}
+            </button>
+            <button onClick={() => setFacingMode(facingMode === 'user' ? 'environment' : 'user')} className="secondary" style={{ flex: 1 }}>
+              Flip
+            </button>
+            <button onClick={reset} className="secondary" style={{ flex: 1 }}>Reset</button>
+          </div>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div>
+          <h2>Liveness Detection</h2>
+          <p style={{ marginBottom: '15px', color: 'var(--text-muted)' }}>
+            Please blink your eyes naturally. This ensures you are a live person.
+          </p>
+          <div className="video-container">
+            <Webcam
+              audio={false}
+              ref={webcamRef}
+              screenshotFormat="image/jpeg"
+              videoConstraints={{
+                facingMode: facingMode,
+                width: 640,
+                height: 480
+              }}
+            />
+          </div>
+          <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <button onClick={reset} className="secondary">Restart Process</button>
           </div>
         </div>
       )}
 
       {step === 4 && (
         <form onSubmit={handleVote}>
-          <h2>Step 4: Cast Your Vote</h2>
+          <h2>Cast Your Official Vote</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '25px' }}>
+            Select your preferred candidate from the list below.
+          </p>
           <div className="form-group">
-            <label>Select Candidate *</label>
-            <div className="candidates-list">
+            <label>Candidates *</label>
+            <div className="candidates-list" style={{ marginTop: '15px' }}>
               {candidates.length > 0 ? (
                 candidates.map((cand) => (
-                  <label key={cand.id} style={{ display: 'block', marginBottom: '10px', cursor: 'pointer' }}>
+                  <label key={cand.id} style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    padding: '15px', 
+                    border: '1px solid var(--border-light)', 
+                    borderRadius: '4px',
+                    marginBottom: '10px', 
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }} 
+                  className="candidate-option">
                     <input
                       type="radio"
                       name="candidate"
                       value={cand.name}
                       checked={candidate === cand.name}
                       onChange={(e) => setCandidate(e.target.value)}
-                      style={{ marginRight: '10px' }}
+                      style={{ marginRight: '15px', width: '18px', height: '18px' }}
                     />
-                    <strong>{cand.name}</strong> ({cand.party})
+                    <div>
+                      <div style={{ fontWeight: '700', fontSize: '15px' }}>{cand.name}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{cand.party}</div>
+                    </div>
                   </label>
                 ))
               ) : (
-                <p>No candidates available. Please contact admin.</p>
+                <div className="notice notice-warning">No candidates available. Please contact admin.</div>
               )}
             </div>
           </div>
 
-          <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <button type="submit" disabled={isProcessing || !candidate}>
-              {isProcessing ? 'Casting Vote...' : 'Cast Vote'}
+          <div style={{ textAlign: 'center', marginTop: '30px', borderTop: '1px solid var(--border-light)', paddingTop: '20px' }}>
+            <button type="submit" disabled={isProcessing || !candidate} style={{ width: '100%', padding: '15px' }}>
+              {isProcessing ? 'Casting Vote...' : 'Confirm & Cast Vote'}
             </button>
-            <button type="button" onClick={reset} className="secondary" style={{ marginLeft: '10px' }}>Reset</button>
+            <button type="button" onClick={reset} className="secondary" style={{ width: '100%', marginTop: '10px' }}>Cancel</button>
           </div>
         </form>
       )}
 
       {status.message && (
-        <div className={`status-message status-${status.type}`}>
+        <div className={`notice notice-${status.type}`}>
           {status.message}
         </div>
       )}

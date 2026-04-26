@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-import API_BASE_URL from '../apiConfig';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 function Admin() {
   const [votes, setVotes] = useState([]);
@@ -14,13 +14,6 @@ function Admin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
-
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('adminToken');
-    setIsAuthenticated(false);
-    setVotes([]);
-    setStats(null);
-  }, []);
 
   const fetchVotes = useCallback(async () => {
     const token = localStorage.getItem('adminToken');
@@ -41,7 +34,7 @@ function Admin() {
     } finally {
       setLoading(false);
     }
-  }, [handleLogout]);
+  }, []);
 
   const fetchStats = useCallback(async () => {
     const token = localStorage.getItem('adminToken');
@@ -78,6 +71,13 @@ function Admin() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    setIsAuthenticated(false);
+    setVotes([]);
+    setStats(null);
   };
 
   useEffect(() => {
@@ -128,13 +128,13 @@ function Admin() {
           </div>
 
           {authError && (
-            <div className="status-message status-error">
+            <div className="notice notice-error">
               {authError}
             </div>
           )}
 
           <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <button type="submit" disabled={loading}>
+            <button type="submit" disabled={loading} style={{ width: '100%' }}>
               {loading ? 'Logging in...' : 'Login'}
             </button>
           </div>
@@ -145,20 +145,20 @@ function Admin() {
 
   if (loading && votes.length === 0) {
     return (
-      <div className="card">
-        <h1>Admin Dashboard</h1>
-        <p>Loading...</p>
+      <div className="card fade-in">
+        <h1 className="card-title">Admin Dashboard</h1>
+        <p>Loading analytics...</p>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="fade-in">
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1>Admin Dashboard</h1>
-          <button onClick={handleLogout} className="secondary" style={{ height: 'fit-content' }}>
-            Logout
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+          <h1 style={{ margin: 0 }}>Dashboard Overview</h1>
+          <button onClick={handleLogout} className="secondary" style={{ padding: '8px 16px' }}>
+            Log Out
           </button>
         </div>
 
@@ -177,44 +177,52 @@ function Admin() {
           </div>
         )}
 
-        <div style={{ textAlign: 'right', marginBottom: '15px' }}>
-          <button onClick={() => { fetchVotes(); fetchStats(); }}>
-            Refresh
+        <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+          <button onClick={() => { fetchVotes(); fetchStats(); }} className="secondary">
+            Refresh Data
           </button>
         </div>
 
         {error && (
-          <div className="status-message status-error">
+          <div className="notice notice-error">
             {error}
           </div>
         )}
 
-        <h2>Real-Time Votes</h2>
+        <h2>Real-Time Voter Turnout</h2>
         {votes.length === 0 ? (
-          <p style={{ textAlign: 'center', color: '#666', padding: '20px' }}>
-            No votes cast yet.
-          </p>
+          <div className="notice notice-warning">
+            No votes have been cast yet for this election.
+          </div>
         ) : (
-          <table className="votes-table">
-            <thead>
-              <tr>
-                <th>Voter ID</th>
-                <th>Name</th>
-                <th>Candidate</th>
-                <th>Voted At</th>
-              </tr>
-            </thead>
-            <tbody>
-              {votes.map((vote, index) => (
-                <tr key={index}>
-                  <td>{vote.voter_id}</td>
-                  <td>{vote.name}</td>
-                  <td>{vote.candidate}</td>
-                  <td>{new Date(vote.voted_at).toLocaleString()}</td>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="wp-table">
+              <thead>
+                <tr>
+                  <th>Voter ID</th>
+                  <th>Name</th>
+                  <th>Candidate</th>
+                  <th>Timestamp</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {votes.map((vote, index) => (
+                  <tr key={index}>
+                    <td style={{ fontWeight: '600' }}>{vote.voter_id}</td>
+                    <td>{vote.name}</td>
+                    <td>
+                      <span style={{ padding: '4px 8px', background: '#f0f6fa', color: 'var(--accent)', borderRadius: '3px', fontSize: '12px', fontWeight: '700' }}>
+                        {vote.candidate}
+                      </span>
+                    </td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+                      {new Date(vote.voted_at).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

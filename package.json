@@ -1,0 +1,22 @@
+{
+  "name": "dlp3-f",
+  "version": "1.0.0",
+  "description": "--- title: Voting System Backend emoji: 🗳️ colorFrom: blue colorTo: green sdk: docker pinned: false ---",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/varunteja62/voting-system.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/varunteja62/voting-system/issues"
+  },
+  "homepage": "https://github.com/varunteja62/voting-system#readme"
+}

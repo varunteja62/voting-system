@@ -189,7 +189,7 @@ def calculate_confidence(distance, threshold=0.40):
         # 50% down to 0%
         confidence = max(0, 50 - ((distance - threshold) / threshold) * 50)
         
-    return round(confidence, 2)
+    return float(round(confidence, 2))
 
 def compare_embeddings(embedding1_bytes, embedding2_bytes, threshold=0.40):
     """Compare two FaceNet embeddings and return match status, distance, and confidence"""
@@ -207,7 +207,7 @@ def compare_embeddings(embedding1_bytes, embedding2_bytes, threshold=0.40):
         is_match = distance < threshold
         print(f"DEBUG: Comparing embeddings - Distance: {distance:.4f}, Threshold: {threshold}, Match: {is_match}, Confidence: {confidence}%")
         
-        return is_match, distance, confidence
+        return bool(is_match), float(distance), float(confidence)
     except Exception as e:
         print(f"Error comparing embeddings: {e}")
         return False, 1.0, 0.0
@@ -237,7 +237,7 @@ def compare_embeddings_multi(reference_embeddings_list, probe_embedding_bytes, t
         
         print(f"DEBUG: Multi-sample comparison - Best Distance: {best_distance:.4f}, Samples: {len(distances)}, Match: {is_match}, Confidence: {confidence}%")
         
-        return is_match, best_distance, confidence, best_index
+        return bool(is_match), float(best_distance), float(confidence), int(best_index)
     except Exception as e:
         print(f"Error in multi-sample comparison: {e}")
         return False, 1.0, 0.0, -1

@@ -25,10 +25,14 @@ def init_database():
             CREATE TABLE IF NOT EXISTS voters (
                 voter_id VARCHAR(50) PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
+                email VARCHAR(255),
+                phone VARCHAR(20),
                 password_hash VARCHAR(255),
                 face_embedding BYTEA NOT NULL,
                 slip_string VARCHAR(10) UNIQUE,
                 voter_image TEXT,
+                otp VARCHAR(6),
+                otp_expiry TIMESTAMP,
                 registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)

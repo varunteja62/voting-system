@@ -6,8 +6,22 @@ from db import init_database
 from routes.admin import admin_bp
 from routes.voter import voter_bp
 
+import numpy as np
+import json
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NpEncoder, self).default(obj)
+
 app = Flask(__name__)
 app.config.from_object(Config)
+app.json.cls = NpEncoder
 CORS(app)
 
 # Register Blueprints

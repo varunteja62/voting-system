@@ -12,6 +12,8 @@ from decorators import rate_limit, csrf_protect
 import numpy as np
 import random
 import string
+from datetime import datetime, timedelta
+from email_utils import send_otp_email
 
 voter_bp = Blueprint('voter', __name__)
 
@@ -47,10 +49,12 @@ def register_voter():
         data = request.json
         voter_id = data.get('voter_id', '').strip().upper()
         name = data.get('name')
+        email = data.get('email')
+        phone = data.get('phone')
         password = data.get('password')
         face_images = data.get('face_images', []) # expecting an array of 3 images
         
-        if not all([voter_id, name, password]) or len(face_images) == 0:
+        if not all([voter_id, name, email, phone, password]) or len(face_images) == 0:
             return jsonify({'error': 'Missing required fields or images'}), 400
         
         # Check if voter already exists
@@ -98,14 +102,14 @@ def register_voter():
             return jsonify({'error': 'Database connection failed'}), 500
         
         password_hash = generate_password_hash(password)
-        voter_image = face_images[0] # Store the first image for the slip
+        voter_image = face_images[2] if len(face_images) > 2 else face_images[0] # Store the center image for the slip
         
         cur = conn.cursor()
         try:
             cur.execute("""
-                INSERT INTO voters (voter_id, name, password_hash, face_embedding, slip_string, voter_image)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (voter_id, name, password_hash, final_embedding_bytes, slip_string, voter_image))
+                INSERT INTO voters (voter_id, name, email, phone, password_hash, face_embedding, slip_string, voter_image)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (voter_id, name, email, phone, password_hash, final_embedding_bytes, slip_string, voter_image))
             conn.commit()
             return jsonify({
                 'message': 'Voter registered successfully',
@@ -137,7 +141,7 @@ def login_voter():
             return jsonify({'error': 'Database connection failed'}), 500
             
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT voter_id, name, password_hash FROM voters WHERE voter_id = %s", (voter_id,))
+        cur.execute("SELECT voter_id, name, password_hash, slip_string FROM voters WHERE voter_id = %s", (voter_id,))
         voter = cur.fetchone()
         cur.close()
         conn.close()
@@ -153,7 +157,8 @@ def login_voter():
             'message': 'Login successful',
             'voter': {
                 'id': voter['voter_id'],
-                'name': voter['name']
+                'name': voter['name'],
+                'slip_string': voter['slip_string']
             }
         }), 200
         
@@ -283,10 +288,9 @@ def secure_verify_voter():
         voter_id = data.get('voter_id', '').strip().upper()
         img_open = data.get('image_open')
         img_closed = data.get('image_closed')
-        slip_string = data.get('slip_string')
         
-        if not all([voter_id, img_open, img_closed, slip_string]):
-            return jsonify({'error': 'Missing required fields: voter_id, image_open, image_closed, slip_string'}), 400
+        if not all([voter_id, img_open, img_closed]):
+            return jsonify({'error': 'Missing required fields: voter_id, image_open, image_closed'}), 400
             
         # 1. Fetch Registered Voter
         conn = get_db_connection()
@@ -294,7 +298,7 @@ def secure_verify_voter():
             return jsonify({'error': 'Database connection failed'}), 500
         
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT face_embedding, slip_string FROM voters WHERE voter_id = %s", (voter_id,))
+        cur.execute("SELECT face_embedding FROM voters WHERE voter_id = %s", (voter_id,))
         voter = cur.fetchone()
         cur.close()
         conn.close()
@@ -302,37 +306,29 @@ def secure_verify_voter():
         if not voter:
             return jsonify({'error': 'Voter not found'}), 404
             
-        # 2. Verify Slip String
-        if voter['slip_string'] != slip_string:
-            return jsonify({'error': 'Invalid Voter Slip String. Verification failed.'}), 401
-            
-        # 3. Process Images and Check Liveness States
-        # Check OPEN image
+        # 2. Process Images and Check Liveness States
         state_open, ear_open, msg_open = get_eye_state(img_open)
         if state_open != 'OPEN':
             return jsonify({'error': f'Liveness Check Failed: First image must have eyes OPEN. Detected: {state_open} ({msg_open})'}), 400
 
-        # Check CLOSED image
         state_closed, ear_closed, msg_closed = get_eye_state(img_closed)
         if state_closed != 'CLOSED':
             return jsonify({'error': f'Liveness Check Failed: Second image must have eyes CLOSED (Blink). Detected: {state_closed} ({msg_closed})'}), 400
             
-        # 3. Spoof Detection (Double Check)
+        # 3. Spoof Detection
         is_spoof, conf_spoof, reason = detect_spoofing(img_open)
         if is_spoof:
              return jsonify({'error': f'Spoof detected on open-eye image: {reason}'}), 403
              
-        # 4. Generate Embeddings for Identity Binding
+        # 4. Generate Embeddings
         emb_open, err1 = image_to_embedding(img_open, check_multiple_faces=False)
         if not emb_open: return jsonify({'error': f'Face processing error (Open): {err1}'}), 400
         
         emb_closed, err2 = image_to_embedding(img_closed, check_multiple_faces=False)
         if not emb_closed: return jsonify({'error': f'Face processing error (Closed): {err2}'}), 400
         
-        # 5. Verify Identity (Match Registered Face)
-        # We verify the OPEN image primarily against the DB
+        # 5. Verify Identity
         base_threshold = current_app.config['FACE_MATCH_THRESHOLD']
-        # Relax threshold slightly if we are highly confident it's a real live person
         dynamic_threshold = base_threshold + (0.02 if conf_spoof > 0.9 else 0)
 
         match_db, dist_db, conf_db = compare_embeddings(
@@ -344,8 +340,7 @@ def secure_verify_voter():
         if not match_db:
              return jsonify({'error': f'Identity Verification Failed: Face does not match registered voter. (Confidence: {conf_db}%)'}), 401
              
-        # 6. Verify Binding (Match Open vs Closed)
-        # Ensure the person blinking is the SAME person who was verified
+        # 6. Verify Binding
         match_binding, dist_binding, conf_binding = compare_embeddings(
             emb_open,
             emb_closed,
@@ -353,9 +348,9 @@ def secure_verify_voter():
         )
         
         if not match_binding:
-            return jsonify({'error': 'Security Alert: The person blinking is NOT the same as the person verified. Request denied.'}), 403
+            return jsonify({'error': 'Security Alert: The person blinking is NOT the same as the person verified.'}), 403
             
-        # 7. Success! Issue Token
+        # 7. Success!
         vote_token = str(uuid.uuid4())
         create_vote_session(vote_token, voter_id, time.time() + 300)
         
@@ -452,14 +447,134 @@ def get_voter_slip():
         if not check_password_hash(voter['password_hash'], password):
             return jsonify({'error': 'Invalid Voter ID or Password'}), 401
             
+        # Handle missing slip_string for older records (auto-remediation)
+        slip_string = voter['slip_string']
+        if not slip_string:
+            slip_string = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+            try:
+                # We need a new connection or use current if it was still open, 
+                # but we already closed it at line 446.
+                conn = get_db_connection()
+                if conn:
+                    cur_upd = conn.cursor()
+                    cur_upd.execute("UPDATE voters SET slip_string = %s WHERE voter_id = %s", (slip_string, voter_id))
+                    conn.commit()
+                    cur_upd.close()
+                    conn.close()
+            except Exception as e:
+                print(f"Auto-remediation error for slip_string: {e}")
+                # We still have the generated string in memory, so we can return it 
+                # even if DB save fails this time.
+
         # Return details (excluding password_hash)
         result = {
             'voter_id': voter['voter_id'],
             'name': voter['name'],
             'voter_image': voter['voter_image'],
-            'slip_string': voter['slip_string']
+            'slip_string': slip_string
         }
         return jsonify(result), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@voter_bp.route('/forgot-password', methods=['POST'])
+@rate_limit(5, 300) # 5 attempts per 5 minutes
+def forgot_password():
+    """Request a password reset OTP"""
+    try:
+        data = request.json
+        voter_id = data.get('voter_id', '').strip().upper()
+        email = data.get('email', '').strip().lower()
+        
+        if not voter_id or not email:
+            return jsonify({'error': 'Voter ID and Email are required'}), 400
+            
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database connection failed'}), 500
+            
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT voter_id, email FROM voters WHERE voter_id = %s", (voter_id,))
+        voter = cur.fetchone()
+        
+        if not voter:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Voter ID not found'}), 404
+            
+        if voter['email'] != email:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Email does not match our records'}), 400
+            
+        # Generate 6-digit OTP
+        otp = ''.join(random.choices(string.digits, k=6))
+        expiry = datetime.now() + timedelta(minutes=10)
+        
+        cur.execute("UPDATE voters SET otp = %s, otp_expiry = %s WHERE voter_id = %s", (otp, expiry, voter_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        # Send OTP via email
+        send_success = send_otp_email(email, otp)
+        
+        if send_success:
+            return jsonify({'message': 'OTP sent successfully to your registered email'}), 200
+        else:
+            return jsonify({
+                'message': 'OTP generated. (Email service unavailable, check server logs if in dev)',
+                'dev_otp': otp # Only for development fallback if needed
+            }), 200
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@voter_bp.route('/reset-password', methods=['POST'])
+@rate_limit(5, 300)
+def reset_password():
+    """Reset password using OTP"""
+    try:
+        data = request.json
+        voter_id = data.get('voter_id', '').strip().upper()
+        otp = data.get('otp', '').strip()
+        new_password = data.get('new_password')
+        
+        if not all([voter_id, otp, new_password]):
+            return jsonify({'error': 'Missing required fields'}), 400
+            
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database connection failed'}), 500
+            
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT otp, otp_expiry FROM voters WHERE voter_id = %s", (voter_id,))
+        voter = cur.fetchone()
+        
+        if not voter:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Voter ID not found'}), 404
+            
+        if not voter['otp'] or voter['otp'] != otp:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Invalid OTP'}), 400
+            
+        if datetime.now() > voter['otp_expiry']:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'OTP has expired. Please request a new one.'}), 400
+            
+        # Update password and clear OTP
+        password_hash = generate_password_hash(new_password)
+        cur.execute("UPDATE voters SET password_hash = %s, otp = NULL, otp_expiry = NULL WHERE voter_id = %s", (password_hash, voter_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'message': 'Password reset successful. You can now login.'}), 200
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
