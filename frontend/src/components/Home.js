@@ -81,7 +81,7 @@ const Home = () => {
                                 <button onClick={handleRegisterClick} className="btn-primary-nav">Register</button>
                             </div>
                         )}
-                        
+
                         {/* Mobile Menu Toggle */}
                         {activeTab === 'overview' && (
                             <button className="mobile-menu-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
