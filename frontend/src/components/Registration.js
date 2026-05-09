@@ -2,9 +2,8 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import API_BASE_URL from '../config';
 // import FingerprintScanner from './FingerprintScanner';
-
-const API_BASE_URL = 'http://localhost:5000/api';
 
 function Registration() {
   const [voterId, setVoterId] = useState('');
