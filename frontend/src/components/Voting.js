@@ -1,8 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:5000/api';
+import API_BASE_URL from '../config';
 
 function Voting() {
   const [voterId, setVoterId] = useState(localStorage.getItem('voter_id') || '');

@@ -22,7 +22,7 @@ class NpEncoder(json.JSONEncoder):
 app = Flask(__name__)
 app.config.from_object(Config)
 app.json.cls = NpEncoder
-CORS(app)
+CORS(app, origins=Config.ALLOWED_ORIGINS)
 
 # Register Blueprints
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
